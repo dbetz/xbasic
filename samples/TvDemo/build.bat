@@ -1,5 +1,7 @@
 set OS=cygwin
-set XBASIC=..\include
+set CYGWIN=nodosfilewarning
+set XB_BIN=..\..\bin\%OS%
+set XB_INC=..\..\include
 bstc -c -Ograux -L c:\bstc\spin TV.spin
-..\bin\%OS%\bin2xbasic TV.dat TV.bas
-..\bin\%OS%\xbcom -b %1 -p %2 TvDemo.bas -r %3 %4 %5 %6 %7
+%XB_BIN%\bin2xbasic TV.dat TV.bas
+%XB_BIN%\xbcom -b %1 -p %2 TvDemo.bas -r %3 %4 %5 %6 %7
