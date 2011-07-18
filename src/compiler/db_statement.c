@@ -1040,8 +1040,8 @@ static void ParseFor(ParseContext *c)
 
     /* no step so default to one */
     else {
-        putcbyte(c, OP_LIT);
-        putcword(c, 1);
+        putcbyte(c, OP_SLIT);
+        putcbyte(c, 1);
     }
 
     /* generate the increment code */
