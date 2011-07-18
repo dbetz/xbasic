@@ -173,6 +173,11 @@ int Execute(Interpreter *i, ImageHdr *image)
             CPush(i, i->tos);
             i->tos = tmp;
             break;
+        case OP_SLIT:
+            tmpb = (int8_t)VMCODEBYTE(i->pc++);
+            CPush(i, i->tos);
+            i->tos = tmpb;
+            break;
         case OP_LOAD:
             i->tos = LoadValue(i, (VMUVALUE)i->tos);
             break;

@@ -60,24 +60,25 @@ typedef struct {
 #define OP_NE           0x16    /* not equal to */
 #define OP_GE           0x17    /* greater than or equal to */
 #define OP_GT           0x18    /* greater than */
-#define OP_LIT          0x19    /* load literal */
-#define OP_LOAD         0x1a    /* load a long from memory */
-#define OP_LOADB        0x1b    /* load a byte from memory */
-#define OP_STORE        0x1c    /* store a long into memory */
-#define OP_STOREB       0x1d    /* store a byte into memory */
-#define OP_LREF         0x1e    /* load a local variable relative to the frame pointer */
-#define OP_LSET         0x1f    /* set a local variable relative to the frame pointer */
-#define OP_INDEX        0x20    /* index into a vector of longs */
-#define OP_PUSHJ        0x21    /* push the pc and jump to a function */
-#define OP_POPJ         0x22    /* return to the address on the stack */
-#define OP_CLEAN        0x23    /* clean arguments off the stack after a function call */
-#define OP_FRAME        0x24    /* create a stack frame */
-#define OP_RETURN       0x25    /* remove a stack frame and return from a function call */
-#define OP_RETURNZ      0x26    /* remove a stack frame and return zero from a function call */
-#define OP_DROP         0x27    /* drop the top element of the stack */
-#define OP_DUP          0x28    /* duplicate the top element of the stack */
-#define OP_NATIVE       0x29    /* execute native code */
-#define OP_TRAP         0x2a    /* trap to handler */
+#define OP_LIT          0x19    /* load a literal */
+#define OP_SLIT         0x1a    /* load a short literal (-128 to 127) */
+#define OP_LOAD         0x1b    /* load a long from memory */
+#define OP_LOADB        0x1c    /* load a byte from memory */
+#define OP_STORE        0x1d    /* store a long into memory */
+#define OP_STOREB       0x1e    /* store a byte into memory */
+#define OP_LREF         0x1f    /* load a local variable relative to the frame pointer */
+#define OP_LSET         0x20    /* set a local variable relative to the frame pointer */
+#define OP_INDEX        0x21    /* index into a vector of longs */
+#define OP_PUSHJ        0x22    /* push the pc and jump to a function */
+#define OP_POPJ         0x23    /* return to the address on the stack */
+#define OP_CLEAN        0x24    /* clean arguments off the stack after a function call */
+#define OP_FRAME        0x25    /* create a stack frame */
+#define OP_RETURN       0x26    /* remove a stack frame and return from a function call */
+#define OP_RETURNZ      0x27    /* remove a stack frame and return zero from a function call */
+#define OP_DROP         0x28    /* drop the top element of the stack */
+#define OP_DUP          0x29    /* duplicate the top element of the stack */
+#define OP_NATIVE       0x2a    /* execute native code */
+#define OP_TRAP         0x2b    /* trap to handler */
 
 /* OP_TRAP functions */
 enum {

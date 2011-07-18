@@ -36,6 +36,7 @@ Type *code_rvalue(ParseContext *c, ParseTreeNode *expr)
 /* code_expr - generate code for an expression parse tree */
 static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
 {
+    VMVALUE ival;
     pv->type = expr->type;
     switch (expr->nodeType) {
     case NodeTypeGlobalRef:
@@ -61,8 +62,15 @@ static void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
         pv->fcn = GEN_NULL;
         break;
     case NodeTypeIntegerLit:
-        putcbyte(c, OP_LIT);
-        putcword(c, expr->u.integerLit.value);
+        ival = expr->u.integerLit.value;
+        if (ival >= -128 && ival <= 127) {
+            putcbyte(c, OP_SLIT);
+            putcbyte(c, expr->u.integerLit.value);
+        }
+        else {
+            putcbyte(c, OP_LIT);
+            putcword(c, expr->u.integerLit.value);
+        }
         pv->fcn = GEN_NULL;
         break;
     case NodeTypeUnaryOp:

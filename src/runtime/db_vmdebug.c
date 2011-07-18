@@ -37,6 +37,7 @@ FLASH_SPACE OTDEF OpcodeTable[] = {
 { OP_GE,        "GE",       FMT_NONE    },
 { OP_GT,        "GT",       FMT_NONE    },
 { OP_LIT,       "LIT",      FMT_WORD    },
+{ OP_SLIT,      "SLIT",     FMT_SBYTE   },
 { OP_LOAD,      "LOAD",     FMT_NONE    },
 { OP_LOADB,     "LOADB",    FMT_NONE    },
 { OP_STORE,     "STORE",    FMT_NONE    },

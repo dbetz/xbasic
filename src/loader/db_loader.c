@@ -260,7 +260,6 @@ int WriteFlashLoaderToEEPROM(BoardConfig *config, char *port)
 int RunLoadedProgram(int step)
 {
     VMUVALUE arg = (VMUVALUE)step;
-    printf("Run: %d\n", step);
 	return SendPacket(TYPE_RUN, (uint8_t *)&arg, sizeof(VMUVALUE));
 }
 

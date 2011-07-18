@@ -28,24 +28,25 @@ OP_NE           = $16    ' not equal to
 OP_GE           = $17    ' greater than or equal to
 OP_GT           = $18    ' greater than
 OP_LIT          = $19    ' load literal
-OP_LOAD         = $1a    ' load a long from memory
-OP_LOADB        = $1b    ' load a byte from memory
-OP_STORE        = $1c    ' store a long in memory
-OP_STOREB       = $1d    ' store a byte in memory
-OP_LREF         = $1e    ' load a local variable relative to the frame pointer
-OP_LSET         = $1f    ' set a local variable relative to the frame pointer
-OP_INDEX        = $20    ' index into a vector
-OP_PUSHJ        = $21    ' push the pc and jump to a function */
-OP_POPJ         = $22    ' return to the address on the stack */
-OP_CLEAN        = $23    ' clean arguments off the stack after a function call */
-OP_FRAME        = $24    ' create a stack frame */
-OP_RETURN       = $25    ' remove a stack frame and return from a function call */
-OP_RETURNZ      = $26    ' remove a stack frame and return zero from a function call */
-OP_DROP         = $27    ' drop the top element of the stack
-OP_DUP          = $28    ' duplicate the top element of the stack
-OP_NATIVE       = $29    ' execute a native instruction
-OP_TRAP         = $2a    ' invoke a trap handler
-OP_LAST         = $2a
+OP_SLIT         = $1a    ' load a short literal (-128 to 127)
+OP_LOAD         = $1b    ' load a long from memory
+OP_LOADB        = $1c    ' load a byte from memory
+OP_STORE        = $1d    ' store a long in memory
+OP_STOREB       = $1e    ' store a byte in memory
+OP_LREF         = $1f    ' load a local variable relative to the frame pointer
+OP_LSET         = $20    ' set a local variable relative to the frame pointer
+OP_INDEX        = $21    ' index into a vector
+OP_PUSHJ        = $22    ' push the pc and jump to a function */
+OP_POPJ         = $23    ' return to the address on the stack */
+OP_CLEAN        = $24    ' clean arguments off the stack after a function call */
+OP_FRAME        = $25    ' create a stack frame */
+OP_RETURN       = $26    ' remove a stack frame and return from a function call */
+OP_RETURNZ      = $27    ' remove a stack frame and return zero from a function call */
+OP_DROP         = $28    ' drop the top element of the stack
+OP_DUP          = $29    ' duplicate the top element of the stack
+OP_NATIVE       = $2a    ' execute a native instruction
+OP_TRAP         = $2b    ' invoke a trap handler
+OP_LAST         = $2b
 
 DIV_OP          = 0
 REM_OP          = 1
@@ -230,7 +231,8 @@ opcode_table                            ' opcode dispatch table
         jmp     #_OP_NE                 ' not equal to
         jmp     #_OP_GE                 ' greater than or equal to
         jmp     #_OP_GT                 ' greater than
-        jmp     #_OP_LIT                ' load literal
+        jmp     #_OP_LIT                ' load a literal
+        jmp     #_OP_SLIT               ' load a short literal (-128 to 127)
         jmp     #_OP_LOAD               ' load a long from memory
         jmp     #_OP_LOADB              ' load a byte from memory
         jmp     #_OP_STORE              ' store a long into memory
@@ -404,7 +406,15 @@ _OP_LIT                ' load literal
         call    #imm32
         mov     tos,t1
         jmp     #_next
-        
+
+_OP_SLIT
+        call    #push_tos
+        call    #get_code_byte
+        shl     t1,#24
+        sar     t1,#22
+        mov     tos,t1
+        jmp     #_next
+
 _OP_LOAD               ' load a long from memory
         mov     t1,tos
         call    #_read_long
