@@ -1,5 +1,11 @@
 REM ===============================================
-REM basic fibo test
+REM basic fibo test performance
+REM
+REM    6482 ms @ 80MHz from HUB
+REM    8642 ms @ 96MHz from C3 Flash
+REM    5401 ms @ 96MHz from HUB
+REM    7202 ms @ 96MHz from SpinSocket-Flash
+REM
 REM ===============================================
 
 REM ------------------------------
@@ -10,13 +16,11 @@ option stacksize=256
 include "print.bas"
 include "propeller.bas"
 
-dim freq
-
 def fibo(n)
-    if n > 2 then
-        return fibo(n-1) + fibo(n-2)
+    if n < 2 then
+        return n
     else
-        return 1
+        return fibo(n-1) + fibo(n-2)
     end if
 end def
 
@@ -29,11 +33,7 @@ def test(count, endcount)
     do while (count <= endcount)
         print "FIBO( ";count;" )",
         start = CNT
-        if count = 0 then
-            result = 0
-        else
-            result = fibo(count)
-        end if
+        result = fibo(count)
         passed = CNT
         ticks = (passed-start) 
         ms = ticks/(clkfreq/1000)
@@ -48,7 +48,6 @@ REM main program loop
 REM
 
 print
-
 do
     dim ticks
     ticks = CNT

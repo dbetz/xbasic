@@ -1,5 +1,10 @@
 REM
-REM xbasic loop1k.bas test - 12ms on 96MHz hub
+REM xbasic loop1k.bas test performance:
+REM
+REM    15ms @ 80MHz from HUB
+REM    21ms @ 96MHz from C3 Flash
+REM    12ms @ 96MHz from HUB
+REM    17ms @ 96MHz from SpinSocket-Flash
 REM
 include "propeller.bas"
 include "print.bas"
