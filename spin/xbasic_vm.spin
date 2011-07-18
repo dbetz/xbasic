@@ -401,17 +401,17 @@ _OP_GT                 ' greater than
   if_be mov     tos,#0
         jmp     #_next
         
-_OP_LIT                ' load literal
+_OP_LIT                ' load a literal
         call    #push_tos
         call    #imm32
         mov     tos,t1
         jmp     #_next
 
-_OP_SLIT
+_OP_SLIT               ' load a short literal (-128 to 127)
         call    #push_tos
         call    #get_code_byte
         shl     t1,#24
-        sar     t1,#22
+        sar     t1,#24
         mov     tos,t1
         jmp     #_next
 
