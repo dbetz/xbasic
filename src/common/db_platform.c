@@ -111,14 +111,19 @@ const char *VM_fullpath(const char *name)
     if ((p = strrchr(path, '\\')) != NULL)
         *p = '\0';
 
-    /* check for the 'Release' or 'Debug' build directories used by Visual C++ */
-    if (strcmp(&p[1], "Release") == 0 || strcmp(&p[1], "Debug") == 0) {
-        if ((p = strrchr(path, '\\')) != NULL)
-            *p = '\0';
+    /* remove the immediate directory containing the executable (usually 'bin') */
+    if ((p = strrchr(path, '\\')) != NULL) {
+        *p = '\0';
+        
+        /* check for the 'Release' or 'Debug' build directories used by Visual C++ */
+        if (strcmp(&p[1], "Release") == 0 || strcmp(&p[1], "Debug") == 0) {
+            if ((p = strrchr(path, '\\')) != NULL)
+                *p = '\0';
+        }
     }
 
     /* generate the full path to the file */
-    strcat(path, "\\");
+    strcat(path, "\\include\\");
     strcat(path, name);
     return path;
 }

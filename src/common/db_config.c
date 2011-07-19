@@ -44,6 +44,7 @@ static int SkipSpaces(LineBuf *buf);
 static char *NextToken(LineBuf *buf, char *termSet, int *pTerm);
 static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue);
 static int DoOp(LineBuf *buf, int op, int left, int right);
+static char *CopyString(LineBuf *buf, char *str);
 static void Error(LineBuf *buf, char *fmt, ...);
 
 static BoardConfig *NewBoardConfig(char *name)
@@ -187,7 +188,7 @@ void ParseConfigurationFile(char *path)
             else if (strcasecmp(tag, "cache-driver") == 0) {
                 if (config->cacheDriver)
                     free(config->cacheDriver);
-                if (!(config->cacheDriver = strdup(value)))
+                if (!(config->cacheDriver = CopyString(&buf, value)))
                     Error(&buf, "insufficient memory");
             }
             else if (strcasecmp(tag, "cache-size") == 0) {
@@ -208,13 +209,13 @@ void ParseConfigurationFile(char *path)
             else if (strcasecmp(tag, "text") == 0) {
                 if (config->defaultTextSection)
                     free(config->defaultTextSection);
-                if (!(config->defaultTextSection = strdup(value)))
+                if (!(config->defaultTextSection = CopyString(&buf, value)))
                     Error(&buf, "insufficient memory");
             }
             else if (strcasecmp(tag, "data") == 0) {
                 if (config->defaultDataSection)
                     free(config->defaultDataSection);
-                if (!(config->defaultDataSection = strdup(value)))
+                if (!(config->defaultDataSection = CopyString(&buf, value)))
                     Error(&buf, "insufficient memory");
             }
             else if (strcasecmp(tag, "flash-size") == 0) {
@@ -400,6 +401,15 @@ static int DoOp(LineBuf *buf, int op, int left, int right)
         break;
     }
     return left;
+}
+
+static char *CopyString(LineBuf *buf, char *str)
+{
+	char *copy = (char *)malloc(strlen(str) + 1);
+	if (!copy)
+		Error(buf, "insufficient memory");
+	strcpy(copy, str);
+	return copy;
 }
 
 static void Error(LineBuf *buf, char *fmt, ...)
