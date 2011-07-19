@@ -53,22 +53,26 @@ run:
 # CLEAN TARGETS #
 #################
 
-.PHONY:	clean
+.PHONY:	clean clean-for-release
 clean:
 	@rm -f -r $(OBJDIR)
 	@rm -f -r $(BINDIR)
 	@rm -f $(DRVDIR)/*.dat
+	
+.PHONY:
+clean-all:	clean
+	@rm -f -r obj
+	@rm -f -r bin
+	@rm -f $(DRVDIR)/*.dat
+	
+.PHONY:	clean-for-release
+clean-for-release:
 	@rm -f samples/*.bai
 	@rm -f samples/*.dat
 	@rm -f samples/*.tmp
 	@rm -f samples/*/*.bai
 	@rm -f samples/*/*.dat
 	@rm -f samples/*/*.tmp
-	
-.PHONY:	clean-all
-clean-all:	clean
-	@rm -f -r obj
-	@rm -f -r bin
 	
 #####################
 # OBJECT FILE LISTS #
@@ -275,9 +279,9 @@ $(BINDIR)/bin2xbasic$(EXT):	$(BINDIR) $(OBJDIR) $(SRCDIR)/tools/bin2xbasic.c
 $(DIRS):
 	$(MKDIR) $@
 
-##################
-# RELEASE TARGET #
-##################
+###################
+# RELEASE TARGETS #
+###################
 
 .PHONY:	release
 release:
@@ -292,3 +296,16 @@ release:
 	cp makefile* ../xbasic-rel/xbasic
 	cp setenv.* ../xbasic-rel/xbasic
 	cp *.docx ../xbasic-rel/xbasic
+	
+.PHONY:	release-win
+release-win:	$(CACHE_DRIVERS) clean-for-release
+	rm -rf ../xbasic-rel/xbasic-win
+	mkdir -p ../xbasic-rel/xbasic-win
+	mkdir -p ../xbasic-rel/xbasic-win/bin
+	cp xbcom/Release/xbcom.exe ../xbasic-rel/xbasic-win/bin
+	cp -r include ../xbasic-rel/xbasic-win
+	cp -r samples ../xbasic-rel/xbasic-win
+	cp syntax.txt ../xbasic-rel/xbasic-win
+	cp setenv.bat ../xbasic-rel/xbasic-win
+	cp *.docx ../xbasic-rel/xbasic-win
+
