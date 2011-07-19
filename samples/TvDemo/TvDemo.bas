@@ -1,12 +1,19 @@
+REM ==================================================================
+REM xbasic TvDemo.bas
+REM ==================================================================
 
+include "math.bas"
 include "print.bas"
 include "propeller.bas"
 include "TvText.bas"
 
+REM ------------------------------------------------------------------
 REM startup program
 main
 
+REM ------------------------------------------------------------------
 REM main function
+REM
 def main
     TvText_start(12)
     do
@@ -14,6 +21,9 @@ def main
     loop
 end def
 
+REM ------------------------------------------------------------------
+REM test function
+REM
 def test
     dim length = 128
     doChars(TvText_screensize+TvText_cols)
@@ -22,34 +32,41 @@ def test
     doPrintTest(length)
 end def
 
+REM ------------------------------------------------------------------
+REM print scrolling chars
+REM
 def doChars(length)
     dim n = 0
-    TvText_setpalette_color(0,0x2E,0x02)
+    TvText_setpalette_color(0,0x07,0x02)
     do while n < length
         TvText_putchar('0'+n)
         n = n + 1
     loop
-    waitcnt(clkfreq+cnt)
+    waitcnt(clkfreq*4+cnt)
 end def
 
+REM ------------------------------------------------------------------
+REM print XY chars 
+REM
 def doOutXYprint(length)
-    dim bg = 0xAA
-    dim fm = 0xF7
+    dim bg = 0x02
     TvText_out(0)
     REM TvText_out row col test
+    TvText_setpalette_color(0,0x9E,bg)
     for n = 0 to length
-        TvText_setpalette_color(0,0x08 | (n & fm),bg)
         TvText_out(TvText_OUTX)
         TvText_out(n MOD TvText_x2cols)
         TvText_out(TvText_OUTY)
         TvText_out(n MOD TvText_rows)
         TvText_out('0'+n)
-        waitcnt(clkfreq/100+cnt)
+        waitcnt(clkfreq/50+cnt)
     next n
-    TvText_setpalette_color(0,0x5E,bg)
     waitcnt(clkfreq/2+cnt)
 end def
 
+REM ------------------------------------------------------------------
+REM print random chars at random XY positions
+REM
 def doRandomChars(length)
     dim mask = 0x7f
     dim value = 0
@@ -58,7 +75,7 @@ def doRandomChars(length)
     TvText_out(0)
     REM random character positions
     for n = 0 to length
-        TvText_setTextXY(random, random)
+        TvText_setTextXY(RND, RND)
         TvText_out('0' + (n & mask))
     next n
     waitcnt(clkfreq+cnt)
@@ -70,11 +87,16 @@ def doRandomChars(length)
     waitcnt(clkfreq/2+cnt)
 end def
 
+REM ------------------------------------------------------------------
+REM print text, bin, hex, dec, and chars using palette
+REM
 def doPrintTest(length)
     dim mask = 0x7f
     dim modmask = 0x7ff
     dim value = 0
     dim n = 0
+
+    TvText_setpalette_color(0,0x9E,0x1A)
 
     n = 0
     REM test printing
@@ -94,10 +116,10 @@ def doPrintTest(length)
             TvText_out(n & 7)
         end if
     next n
-    waitcnt(clkfreq+cnt)
+    waitcnt(clkfreq*2+cnt)
     TvText_out(0)
     TvText_setpalette_color(0,0x07,0x02)
-    waitcnt(clkfreq/4+cnt)
+    waitcnt(clkfreq+cnt)
 end def
 
 dim hex16array(16) = {
@@ -119,25 +141,3 @@ def printhex(value, digits)
     loop
 end def
 
-REM===================================================
-REM return a positive random number
-REM
-dim lfsr = 1
-def random
-    REM taps: 32 31 29 1; characteristic polynomial: x^32 + x^31 + x^29 + x + 1
-    lfsr = (lfsr >> 1) ^ (-(lfsr & 1) & 0xD0000001) 
-    REM lfsr = (lfsr >> 1) ^ (-(lfsr & 1) & 0xD0000081) 
-    return lfsr & 0x7fffffff
-end def
-
-def seed(num)
-    lfsr = num
-/*
-    dim n = 10
-    lfsr = num
-    do while n
-        random
-        n = n - 1
-    loop
-*/
-end def
