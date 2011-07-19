@@ -755,9 +755,9 @@ static void ParseLet(ParseContext *c)
     lvalue = ParsePrimary(c);
     FRequire(c, '=');
     ParseRValue(c);
+    code_lvalue(c, lvalue, &pv);
     if (lvalue->type->id != pv.type->id)
         ParseError(c, "type mismatch");
-    code_lvalue(c, lvalue, &pv);
     (*pv.fcn)(c, PV_STORE, &pv);
     FRequire(c, T_EOL);
 }
