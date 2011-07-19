@@ -46,7 +46,7 @@ dim TvText_palette() as byte = {
     0x3D,   0x4C        // 4     cyan / teal
     0x6B,   0x6E        // 5    green / lime
     0xBB,   0xCE        // 6      red / pink
-    0x3D,   0x39        // 7     cyan / navy
+    0x3D,   0x1A        // 7     cyan / navy
 }
 
 /*

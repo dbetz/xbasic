@@ -56,3 +56,21 @@ def Math_SignExW(value)
     return value
 end def
 
+REM===================================================
+REM return a positive random number
+REM
+def RND
+    rnd_lfsr = (rnd_lfsr >> 1) ^ (-(rnd_lfsr & 1) & rnd_poly)
+    return rnd_lfsr & 0x7fffffff
+end def
+
+dim rnd_lfsr        = 0x55555555
+dim rnd_poly        = 0x20000051 // fair alternative
+REM dim rnd_poly    = 0xD0000001
+
+REM===================================================
+REM seed the PRNG generator
+REM
+def SEED(num)
+    rnd_lfsr = num
+end def
