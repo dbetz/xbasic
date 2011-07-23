@@ -29,7 +29,7 @@ static int SourceGetLine(void *cookie, char *buf, int len);
 int main(int argc, char *argv[])
 {
     char *infile = NULL, outfile[FILENAME_MAX];
-    char *port, *board;
+    char *port, *board, *p;
     BoardConfig *config;
     int writeEepromLoader = VMFALSE;
     int runImage = VMFALSE;
@@ -47,8 +47,6 @@ int main(int argc, char *argv[])
     if (!(board = getenv("BOARD")))
         board = DEF_BOARD;
         
-    ParseConfigurationFile("xbasic.cfg");
-
     /* get the arguments */
     for(i = 1; i < argc; ++i) {
 
@@ -101,6 +99,15 @@ int main(int argc, char *argv[])
             case 'v':
                 compilerFlags |= COMPILER_INFO;
                 break;
+            case 'I':
+                if(argv[i][2])
+                    p = &argv[i][2];
+                else if(++i < argc)
+                    p = argv[i];
+                else
+                    Usage();
+                VM_setpath(p);
+                break;
             default:
                 Usage();
                 break;
@@ -115,6 +122,8 @@ int main(int argc, char *argv[])
         }
     }
     
+    ParseConfigurationFile("xbasic.cfg");
+
     /* make sure an input file was specified */
     if (!infile)
         Usage();
@@ -216,6 +225,7 @@ usage: xbcom\n\
          [ -t ]          enter terminal mode after running the program\n\
          [ -d ]          display compiler debug information\n\
          [ -v ]          display verbose compiler statistics\n\
+         [ -I <path> ]   set the path for include files\n\
          <name>          file to compile\n\
 ", DEF_PORT);
     exit(1);

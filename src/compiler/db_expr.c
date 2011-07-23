@@ -25,12 +25,6 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode);
 static ParseTreeNode *MakeUnaryOpNode(ParseContext *c, int op, ParseTreeNode *expr);
 static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *left, ParseTreeNode *right);
 
-/* ParseRValue - parse and generate code for an r-value */
-Type *ParseRValue(ParseContext *c)
-{
-    return code_rvalue(c, ParseExpr(c));
-}
-
 /* ParseExpr - handle the OR operator */
 ParseTreeNode *ParseExpr(ParseContext *c)
 {
@@ -39,15 +33,15 @@ ParseTreeNode *ParseExpr(ParseContext *c)
     node = ParseExpr2(c);
     if ((tkn = GetToken(c)) == T_OR) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
-        ExprListEntry *entry, **pLast;
+        NodeListEntry *entry, **pLast;
         node2->type = &c->integerType;
-        node2->u.exprList.exprs = entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-        entry->expr = node;
+        node2->u.exprList.exprs = entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        entry->node = node;
         entry->next = NULL;
         pLast = &entry->next;
         do {
-            entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-            entry->expr = ParseExpr2(c);
+            entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            entry->node = ParseExpr2(c);
             entry->next = NULL;
             *pLast = entry;
             pLast = &entry->next;
@@ -66,15 +60,15 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
     node = ParseExpr3(c);
     if ((tkn = GetToken(c)) == T_AND) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
-        ExprListEntry *entry, **pLast;
+        NodeListEntry *entry, **pLast;
         node2->type = &c->integerType;
-        node2->u.exprList.exprs = entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-        entry->expr = node;
+        node2->u.exprList.exprs = entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        entry->node = node;
         entry->next = NULL;
         pLast = &entry->next;
         do {
-            entry = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-            entry->expr = ParseExpr2(c);
+            entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            entry->node = ParseExpr2(c);
             entry->next = NULL;
             *pLast = entry;
             pLast = &entry->next;
@@ -344,18 +338,18 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
     /* parse the optional argument list */
     if ((tkn = GetToken(c)) == '(') {
         do {
-            ExprListEntry *actual;
+            NodeListEntry *actual;
 
             /* allocate an actual argument structure and push it onto the list of arguments */
-            actual = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-            actual->expr = ParseExpr(c);
+            actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            actual->node = ParseExpr(c);
             actual->next = node->u.functionCall.args;
             node->u.functionCall.args = actual;
 
             /* check the argument count and type */
             if (!arg)
                 ParseError(c, "too many arguments");
-            else if (!CompareTypes(actual->expr->type, arg->type))
+            else if (!CompareTypes(actual->node->type, arg->type))
                 ParseError(c, "wrong argument type");
 
             /* move ahead to the next argument */
@@ -415,7 +409,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     Symbol *symbol;
 
     /* handle local variables within a function */
-    if (c->codeType && (symbol = FindSymbol(&c->locals, name)) != NULL) {
+    if (c->function && (symbol = FindSymbol(&c->function->u.functionDefinition.locals, name)) != NULL) {
         node = NewParseTreeNode(c, NodeTypeLocalRef);
         node->type = symbol->type;
         node->u.localRef.symbol = symbol;
@@ -424,7 +418,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     }
 
     /* handle function arguments */
-    else if (c->codeType && (symbol = FindSymbol(&c->codeType->u.functionInfo.arguments, name)) != NULL) {
+    else if (c->functionType && (symbol = FindSymbol(&c->functionType->u.functionInfo.arguments, name)) != NULL) {
         node = NewParseTreeNode(c, NodeTypeLocalRef);
         node->type = symbol->type;
         node->u.localRef.symbol = symbol;
@@ -606,6 +600,16 @@ ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
     return node;
 }
 
+/* AddNodeToList - add a node to a parse tree node list */
+void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node)
+{
+    NodeListEntry *entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    entry->node = node;
+    entry->next = NULL;
+    **ppNextEntry = entry;
+    *ppNextEntry = &entry->next;
+}
+
 /* IsIntegerLit - check to see if a node is an integer literal */
 int IsIntegerLit(ParseTreeNode *node)
 {
@@ -617,5 +621,202 @@ int IsStringLit(ParseTreeNode *node)
 {
     return node->nodeType == NodeTypeStringLit;
 }
-    
-    
+
+static void PrintNodeList(NodeListEntry *entry, int indent);
+static void PrintCaseList(CaseListEntry *entry, int indent);
+
+void PrintNode(ParseTreeNode *node, int indent)
+{
+	printf("%*s", indent, "");
+    switch (node->nodeType) {
+    case NodeTypeFunctionDefinition:
+        printf("FunctionDefinition: %s\n", node->type ? node->u.functionDefinition.symbol->name : "<main>");
+        PrintNodeList(node->u.functionDefinition.bodyStatements, indent + 2);
+        break;
+    case NodeTypeLetStatement:
+        printf("Let\n");
+        printf("%*slvalue\n", indent + 2, "");
+        PrintNode(node->u.letStatement.lvalue, indent + 4);
+        printf("%*srvalue\n", indent + 2, "");
+        PrintNode(node->u.letStatement.rvalue, indent + 4);
+        break;
+    case NodeTypeIfStatement:
+        printf("If\n");
+        printf("%*stest\n", indent + 2, "");
+        PrintNode(node->u.ifStatement.test, indent + 4);
+        printf("%*sthen\n", indent + 2, "");
+        PrintNodeList(node->u.ifStatement.thenStatements, indent + 4);
+        if (node->u.ifStatement.elseStatements) {
+            printf("%*selse\n", indent + 2, "");
+            PrintNodeList(node->u.ifStatement.elseStatements, indent + 4);
+        }
+        break;
+    case NodeTypeSelectStatement:
+        printf("Select\n");
+        printf("%*sexpr\n", indent + 2, "");
+        PrintNode(node->u.selectStatement.expr, indent + 4);
+        PrintNodeList(node->u.selectStatement.caseStatements, indent + 2);
+        if (node->u.selectStatement.elseStatements) {
+            printf("%*sElse\n", indent + 2, "");
+            PrintNodeList(node->u.selectStatement.elseStatements->u.caseStatement.bodyStatements, indent + 4);
+        }
+        break;
+    case NodeTypeCaseStatement:
+        printf("Case\n");
+        printf("%*scases\n", indent + 2, "");
+        PrintCaseList(node->u.caseStatement.cases, indent + 4);
+        PrintNodeList(node->u.caseStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeForStatement:
+        printf("For\n");
+        printf("%*svar\n", indent + 2, "");
+        PrintNode(node->u.forStatement.var, indent + 4);
+        printf("%*sstart\n", indent + 2, "");
+        PrintNode(node->u.forStatement.startExpr, indent + 4);
+        printf("%*send\n", indent + 2, "");
+        PrintNode(node->u.forStatement.endExpr, indent + 4);
+        if (node->u.forStatement.stepExpr) {
+            printf("%*sstep\n", indent + 2, "");
+            PrintNode(node->u.forStatement.stepExpr, indent + 4);
+        }
+        PrintNodeList(node->u.forStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeDoWhileStatement:
+        printf("DoWhile\n");
+        printf("%*stest\n", indent + 2, "");
+        PrintNode(node->u.loopStatement.test, indent + 4);
+        PrintNodeList(node->u.loopStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeDoUntilStatement:
+        printf("DoUntil\n");
+        printf("%*stest\n", indent + 2, "");
+        PrintNode(node->u.loopStatement.test, indent + 4);
+        PrintNodeList(node->u.loopStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeLoopStatement:
+        printf("Loop\n");
+        PrintNodeList(node->u.loopStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeLoopWhileStatement:
+        printf("LoopWhile\n");
+        printf("%*stest\n", indent + 2, "");
+        PrintNode(node->u.loopStatement.test, indent + 4);
+        PrintNodeList(node->u.loopStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeLoopUntilStatement:
+        printf("LoopUntil\n");
+        printf("%*stest\n", indent + 2, "");
+        PrintNode(node->u.loopStatement.test, indent + 4);
+        PrintNodeList(node->u.loopStatement.bodyStatements, indent + 2);
+        break;
+    case NodeTypeReturnStatement:
+        printf("Return\n");
+        if (node->u.returnStatement.expr) {
+            printf("%*sexpr\n", indent + 2, "");
+            PrintNode(node->u.returnStatement.expr, indent + 4);
+        }
+        break;
+    case NodeTypeCallStatement:
+        printf("CallStatement\n");
+        printf("%*sexpr\n", indent + 2, "");
+        PrintNode(node->u.callStatement.expr, indent + 4);
+        break;
+    case NodeTypeLabelDefinition:
+        printf("Label: %s\n", node->u.labelDefinition.label->name);
+        break;
+    case NodeTypeGotoStatement:
+        printf("Goto: %s\n", node->u.gotoStatement.label->name);
+        break;
+    case NodeTypeEndStatement:
+        printf("Return\n");
+        break;
+    case NodeTypeGlobalRef:
+        printf("GlobalRef: %s\n", node->u.globalRef.symbol->name);
+        break;
+    case NodeTypeLocalRef:
+        printf("LocalRef: %s\n", node->u.localRef.symbol->name);
+        break;
+    case NodeTypeFunctionLit:
+        printf("FunctionLit: %s\n", node->u.localRef.symbol->name);
+        break;
+    case NodeTypeArrayLit:
+        printf("ArrayLit: %s\n", node->u.localRef.symbol->name);
+        break;
+    case NodeTypeStringLit:
+		printf("StringLit: '%s'\n",node->u.stringLit.string->value);
+        break;
+    case NodeTypeIntegerLit:
+		printf("IntegerLit: %d\n",node->u.integerLit.value);
+        break;
+    case NodeTypeUnaryOp:
+        printf("UnaryOp: %d\n", node->u.unaryOp.op);
+        printf("%*sexpr\n", indent + 2, "");
+        PrintNode(node->u.unaryOp.expr, indent + 4);
+        break;
+    case NodeTypeBinaryOp:
+        printf("BinaryOp: %d\n", node->u.binaryOp.op);
+        printf("%*sleft\n", indent + 2, "");
+        PrintNode(node->u.binaryOp.left, indent + 4);
+        printf("%*sright\n", indent + 2, "");
+        PrintNode(node->u.binaryOp.right, indent + 4);
+        break;
+    case NodeTypeArrayRef:
+        printf("ArrayRef\n");
+        printf("%*sarray\n", indent + 2, "");
+        PrintNode(node->u.arrayRef.array, indent + 4);
+        printf("%*sindex\n", indent + 2, "");
+        PrintNode(node->u.arrayRef.index, indent + 4);
+        break;
+    case NodeTypeFunctionCall:
+        printf("FunctionCall: %d\n", node->u.functionCall.argc);
+        printf("%*sfcn\n", indent + 2, "");
+        PrintNode(node->u.functionCall.fcn, indent + 4);
+        PrintNodeList(node->u.functionCall.args, indent + 2);
+        break;
+    case NodeTypeDisjunction:
+        printf("Disjunction\n");
+        PrintNodeList(node->u.exprList.exprs, indent + 2);
+        break;
+    case NodeTypeConjunction:
+        printf("Conjunction\n");
+        PrintNodeList(node->u.exprList.exprs, indent + 2);
+        break;
+    case NodeTypeAddressOf:
+        printf("AddressOf\n");
+        printf("%*sexpr\n", indent + 2, "");
+        PrintNode(node->u.addressOf.expr, indent + 4);
+        break;
+    default:
+        printf("<unknown node type: %d>\n", node->nodeType);
+        break;
+    }
+}
+
+static void PrintNodeList(NodeListEntry *entry, int indent)
+{
+    while (entry != NULL) {
+        PrintNode(entry->node, indent);
+        entry = entry->next;
+    }
+}
+
+static void PrintCaseList(CaseListEntry *entry, int indent)
+{
+    while (entry != NULL) {
+        if (!entry->fromExpr)
+            printf("%*selse\n", indent, "");
+        else if (!entry->toExpr) {
+            printf("%*sexpr\n", indent, "");
+            PrintNode(entry->fromExpr, indent + 2);
+        }
+        else {
+            printf("%*srange\n", indent, "");
+            printf("%*sfrom\n", indent + 2, "");
+            PrintNode(entry->fromExpr, indent + 4);
+            printf("%*sto\n", indent + 2, "");
+            PrintNode(entry->toExpr, indent + 4);
+        }
+        entry = entry->next;
+    }
+}
+
