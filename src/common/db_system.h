@@ -26,6 +26,7 @@ void VM_printf(const char *fmt, ...);
 void VM_vprintf(const char *fmt, va_list ap);
 void Fatal(System *sys, char *fmt, ...);
 
+void VM_setpath(const char *p);
 const char *VM_fullpath(const char *name);
 FILE *VM_fopen(const char *name, const char *mode);
 FILE *VM_CreateTmpFile(const char *name, const char *mode);

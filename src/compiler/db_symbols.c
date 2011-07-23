@@ -51,11 +51,11 @@ Symbol *AddGlobalConstantString(ParseContext *c, const char *name, String *strin
 }
 
 /* AddFormalArgument - add a formal argument using the global heap */
-Symbol *AddFormalArgument(ParseContext *c, const char *name, Type *type, VMUVALUE offset)
+Symbol *AddFormalArgument(ParseContext *c, SymbolTable *table, const char *name, Type *type, VMUVALUE offset)
 {
     if (type->id == TYPE_ARRAY)
         type = ArrayTypeToPointerType(c, type);
-    return AddGlobal(c, &c->codeType->u.functionInfo.arguments, name, SC_LOCAL, type, offset);
+    return AddGlobal(c, table, name, SC_LOCAL, type, offset);
 }
 
 /* AddGlobal - add a symbol to a global symbol table */
@@ -90,7 +90,7 @@ static Symbol *AddGlobal(ParseContext *c, SymbolTable *table, const char *name, 
 /* AddLocal - add a symbol to the symbol table */
 Symbol *AddLocal(ParseContext *c, const char *name, Type *type, VMUVALUE offset)
 {
-    SymbolTable *table = &c->locals;
+    SymbolTable *table = &c->function->u.functionDefinition.locals;
     size_t size = sizeof(Symbol) + strlen(name);
     Symbol *sym;
     

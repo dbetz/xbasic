@@ -79,7 +79,7 @@ int Compile(ParseContext *c, char *name)
     c->heapTop = c->nextLocal = c->nextGlobal + c->heapSize;
     c->maxHeapUsed = 0;
 
-    /* initialize block nesting table */
+    /* initialize block nesting stack */
     c->btop = (Block *)((char *)c->blockBuf + sizeof(c->blockBuf));
     c->bptr = c->blockBuf - 1;
 
@@ -91,10 +91,13 @@ int Compile(ParseContext *c, char *name)
 
     /* initialize the string and label tables */
     c->strings = NULL;
-    c->labels = NULL;
 
     /* initialize the global symbol table */
     InitSymbolTable(&c->globals);
+    
+    /* add some constants */
+    AddGlobalConstantInteger(c, "TRUE", 1);
+    AddGlobalConstantInteger(c, "FALSE", 0);
 
     /* add the registers */
     AddRegister(c, "PAR",   COG_BASE + 0x1f0 * 4);
@@ -117,9 +120,6 @@ int Compile(ParseContext *c, char *name)
     /* initialize scanner */
     c->inComment = VMFALSE;
     
-    /* start in the main code */
-    c->codeType = NULL;
-
     /* do two passes over the source program */
     for (c->pass = 1; c->pass <= 2; ++c->pass) {
         
@@ -143,7 +143,7 @@ int Compile(ParseContext *c, char *name)
     /* write the main code */
     switch (c->mainState) {
     case MAIN_IN_PROGRESS:
-		StoreMain(c);
+		EndFunction(c);
         break;
     case MAIN_NOT_DEFINED:
         ParseError(c, "no main code");
@@ -176,33 +176,14 @@ int Compile(ParseContext *c, char *name)
     return BuildImage(c, name);
 }
 
-/* StoreMain - store the main code under construction */
-void StoreMain(ParseContext *c)
-{
-	putcbyte(c, OP_HALT);
-    c->mainCode = c->textTarget->base + c->textTarget->offset;
-    StoreCode(c);
-}
-
 /* StartCode - start a function or method under construction */
-void StartCode(ParseContext *c, Symbol *symbol, Type *type)
+void StartCode(ParseContext *c)
 {
     /* initialize */
-    c->codeSymbol = symbol;
-    c->codeType = type;
-    InitSymbolTable(&c->locals);
-    c->localOffset = 0;
     c->symbolFixups = NULL;
-    c->labels = NULL;
 
     /* reset to compile the next code */
     c->cptr = c->codeBuf;
-    
-    /* add the function prolog */
-    if (c->codeType) {
-        putcbyte(c, OP_FRAME);
-        putcbyte(c, 0); // will be fixed up by StoreCode
-    }
 }
 
 /* StoreCode - store the function or method under construction */
@@ -211,7 +192,7 @@ void StoreCode(ParseContext *c)
     int codeSize;
 
     /* check for unterminated blocks */
-	switch (CurrentBlockType(c)) {
+	switch (c->bptr->type) {
     case BLOCK_IF:
     case BLOCK_ELSE:
 		ParseError(c, "expecting END IF");
@@ -219,18 +200,23 @@ void StoreCode(ParseContext *c)
 		ParseError(c, "expecting NEXT");
 	case BLOCK_DO:
 		ParseError(c, "expecting LOOP");
-	case BLOCK_NONE:
+	default:
 		break;
 	}
 
-    /* fixup the RESERVE instruction at the start of the code */
-    if (c->codeType) {
-        c->codeBuf[1] = F_SIZE + c->localOffset;
-        putcbyte(c, OP_RETURNZ);
-    }
-
     /* make sure all referenced labels were defined */
     CheckLabels(c);
+
+    /* generate code for the function */
+    if (c->flags & COMPILER_DEBUG) 
+        PrintNode(c->function, 0);
+    Generate(c, c->function);
+    
+    /* store the function or main offset */
+    if (c->functionType)
+        c->function->u.functionDefinition.symbol->v.variable.offset = c->textTarget->offset;
+    else
+        c->mainCode = c->textTarget->base + c->textTarget->offset;
 
     /* apply the local symbol and string fixups */
     ApplyLocalFixups(c, c->textTarget->offset);
@@ -240,11 +226,12 @@ void StoreCode(ParseContext *c)
 
     /* show the function disassembly */
     if (c->flags & COMPILER_DEBUG) {
-        VM_printf("\n%s:\n", c->codeSymbol ? c->codeSymbol->name : "[main]");
+        Symbol *symbol = c->function->u.functionDefinition.symbol;
+        VM_printf("\n%s:\n", symbol ? symbol->name : "[main]");
         DecodeFunction(c->textTarget->base + c->textTarget->offset, c->codeBuf, codeSize);
-        if (c->codeType)
-            DumpSymbols(c, &c->codeType->u.functionInfo.arguments, "arguments");
-        DumpSymbols(c, &c->locals, "locals");
+        if (c->functionType)
+            DumpSymbols(c, &c->function->type->u.functionInfo.arguments, "arguments");
+        DumpSymbols(c, &c->function->u.functionDefinition.locals, "locals");
         DumpLabels(c);
         DumpLocalFixups(c);
     }
@@ -254,12 +241,6 @@ void StoreCode(ParseContext *c)
 
     /* empty the local heap */
     c->nextLocal = c->heapTop;
-    
-    /* empty the label list */
-    c->labels = NULL;
-    
-    /* no longer compiling a function */
-    c->codeType = NULL;
 }
 
 /* AddString - add a string to the string table */

@@ -16,6 +16,8 @@ static void SetIntegerOption(ParseContext *c, int *pValue);
 static void ParseDef(ParseContext *c);
 static void ParseConstantDef(ParseContext *c, char *name);
 static void ParseFunctionDef(ParseContext *c, char *name);
+static void ParseFunctionDef_pass1(ParseContext *c, char *name);
+static void ParseFunctionDef_pass2(ParseContext *c, char *name);
 static void ParseEndDef(ParseContext *c);
 static void ParseDim(ParseContext *c);
 static Type *ParseVariableDecl(ParseContext *c, char *name, VMUVALUE *pSize);
@@ -41,17 +43,17 @@ static void ParseLoop(ParseContext *c);
 static void ParseLoopWhile(ParseContext *c);
 static void ParseLoopUntil(ParseContext *c);
 static void ParseAsm(ParseContext *c);
-static void ParseStop(ParseContext *c);
 static void ParseGoto(ParseContext *c);
 static void ParseReturn(ParseContext *c);
 static void ParseInput(ParseContext *c);
 static void ParsePrint(ParseContext *c);
 
 /* prototypes */
-static void PrintFunctionCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr);
-static void DefineLabel(ParseContext *c, char *name, int offset);
-static int ReferenceLabel(ParseContext *c, char *name, int offset);
-static void PushBlock(ParseContext *c);
+static void StartFunction(ParseContext *c, Symbol *sym);
+static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr);
+static ParseTreeNode *BuildHandlerFunctionCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr);
+static void DefineLabel(ParseContext *c, char *name);
+static void PushBlock(ParseContext *c, BlockType type, ParseTreeNode *node);
 static void PopBlock(ParseContext *c);
 static void Assemble(ParseContext *c, char *opname);
 static VMVALUE ParseIntegerConstant(ParseContext *c);
@@ -87,10 +89,10 @@ again:
         break;
     default:
         if (c->pass == 2) {
-            if (!c->codeType) {
+            if (!c->functionType) {
                 switch (c->mainState) {
                 case MAIN_NOT_DEFINED:
-                    StartCode(c, NULL, NULL);
+                    StartFunction(c, NULL);
                     c->mainState = MAIN_IN_PROGRESS;
                     break;
                 case MAIN_DEFINED:
@@ -124,6 +126,7 @@ again:
                 ParseEndSelect(c);
                 break;
             case T_END:
+            case T_STOP:
                 ParseEnd(c);
                 break;
             case T_FOR:
@@ -153,9 +156,6 @@ again:
             case T_ASM:
                 ParseAsm(c);
                 break;
-            case T_STOP:
-                ParseStop(c);
-                break;
             case T_GOTO:
                 ParseGoto(c);
                 break;
@@ -170,7 +170,7 @@ again:
                 break;
             case T_IDENTIFIER:
                 if (SkipSpaces(c) == ':') {
-                    DefineLabel(c, c->token, codeaddr(c));
+                    DefineLabel(c, c->token);
                     if ((tkn = GetToken(c)) == T_EOL)
                         return;
                     goto again;
@@ -268,84 +268,108 @@ static void ParseConstantDef(ParseContext *c, char *name)
 /* ParseFunctionDef - parse a 'DEF <name>' statement */
 static void ParseFunctionDef(ParseContext *c, char *name)
 {
-    Symbol *sym;
-
     /* end the main function if it is in progress */
     if (c->mainState == MAIN_IN_PROGRESS) {
-        StoreMain(c);
+        EndFunction(c);
         c->mainState = MAIN_DEFINED;
     }
 
     /* don't allow nested functions or subroutines (for now anyway) */
-    if (c->codeType)
+    if (c->functionType)
         ParseError(c, "nested subroutines and functions are not supported");
+    
+    if (c->pass == 1)
+        ParseFunctionDef_pass1(c, name);
+    else
+        ParseFunctionDef_pass2(c, name);
+}
 
-    /* handle pass 1 */
-    if (c->pass == 1) {
-        Type *type;
-        Token tkn;
-        
-        /* make the function type */
-        type = NewGlobalType(c, TYPE_FUNCTION);
-        type->u.functionInfo.returnType = &c->integerType;
-        InitSymbolTable(&type->u.functionInfo.arguments);
-        
-        /* set codeType so we know we're compiling a function */
-        c->codeType = type;
-        
-        /* enter the function name in the global symbol table */
-        sym = AddGlobalSymbol(c, name, SC_CONSTANT, type, NULL);
+/* ParseFunctionDef_pass1 - parse a 'DEF <name>' statement during pass 1 */
+static void ParseFunctionDef_pass1(ParseContext *c, char *name)
+{
+    Symbol *sym;
+    Type *type;
+    Token tkn;
+    
+    /* make the function type */
+    type = NewGlobalType(c, TYPE_FUNCTION);
+    type->u.functionInfo.returnType = &c->integerType;
+    InitSymbolTable(&type->u.functionInfo.arguments);
+    c->functionType = type;
 
-        /* get the argument list */
-        if ((tkn = GetToken(c)) == '(') {
-            if ((tkn = GetToken(c)) != ')') {
-                int offset = 0;
-                SaveToken(c, tkn);
-                do {
-                    char name[MAXTOKEN];
-                    VMUVALUE size;
-                    Type *type = ParseVariableDecl(c, name, &size);
-                    if (type->id == TYPE_ARRAY && size != 0)
-                        ParseError(c, "Array arguments can not specify size");
-                    AddFormalArgument(c, name, type, offset++);
-                } while ((tkn = GetToken(c)) == ',');
-            }
-            Require(c, tkn, ')');
-        }
-        else
+    /* enter the function name in the global symbol table */
+    sym = AddGlobalSymbol(c, name, SC_CONSTANT, type, NULL);
+
+    /* get the argument list */
+    if ((tkn = GetToken(c)) == '(') {
+        if ((tkn = GetToken(c)) != ')') {
+            SymbolTable *table = &type->u.functionInfo.arguments;
+            int offset = 0;
             SaveToken(c, tkn);
-        
-        FRequire(c, T_EOL);
+            do {
+                char name[MAXTOKEN];
+                VMUVALUE size;
+                type = ParseVariableDecl(c, name, &size);
+                if (type->id == TYPE_ARRAY && size != 0)
+                    ParseError(c, "Array arguments can not specify size");
+                AddFormalArgument(c, table, name, type, offset++);
+            } while ((tkn = GetToken(c)) == ',');
+        }
+        Require(c, tkn, ')');
     }
-    
-    /* handle pass 2 */
-    else {
-    
-        /* find the symbol defined in pass 1 */
-        sym = FindSymbol(&c->globals, name);
+    else
+        SaveToken(c, tkn);
         
-        /* setup to compile the function body */
-        sym->section = c->textTarget;
-        StartCode(c, sym, sym->type);
-    }
+    FRequire(c, T_EOL);
+}
+
+/* ParseFunctionDef_pass2 - parse a 'DEF <name>' statement during pass 2 */
+static void ParseFunctionDef_pass2(ParseContext *c, char *name)
+{
+    Symbol *sym;
+    sym = FindSymbol(&c->globals, name);
+    sym->section = c->textTarget;
+    StartFunction(c, sym);
+}
+
+/* StartFunction - start compiling a function */
+static void StartFunction(ParseContext *c, Symbol *sym)
+{
+    ParseTreeNode *node;
+
+    /* make the function node */
+    node = NewParseTreeNode(c, NodeTypeFunctionDefinition);
+    node->type = sym ? sym->type : NULL;
+    node->u.functionDefinition.symbol = sym;
+    InitSymbolTable(&node->u.functionDefinition.locals);
+    node->u.functionDefinition.labels = NULL;
+    node->u.functionDefinition.localOffset = 0;
+    
+    /* setup to compile the function body */
+    PushBlock(c, BLOCK_FUNCTION, node);
+    c->bptr->pNextStatement = &node->u.functionDefinition.bodyStatements;
+    c->functionType = node->type;
+    c->function = node;
+    StartCode(c);
+}
+
+/* EndFunction - end the current or main function definition */
+void EndFunction(ParseContext *c)
+{
+    StoreCode(c);
+    PopBlock(c);
+    c->functionType = NULL;
+    c->function = NULL;
 }
 
 /* ParseEndDef - parse the 'END DEF' statement */
 static void ParseEndDef(ParseContext *c)
 {
-    if (c->codeType) {
-    
-        /* handle pass 1 */
-        if (c->pass == 1)
-            c->codeType = NULL;
-        
-        /* handle pass 2 */
-        else {
-            c->codeSymbol->v.variable.offset = c->textTarget->offset;
-            StoreCode(c);
-        }
+    if (c->functionType) {
+        if (c->pass == 2)
+            EndFunction(c);
+        c->functionType = NULL;
     }
-    
     else
         ParseError(c, "not in a function definition");
 }
@@ -368,7 +392,7 @@ static void ParseDim(ParseContext *c)
         isArray = (type->id == TYPE_ARRAY);
 
         /* check for being inside a function definition */
-        if (c->codeType) {
+        if (c->functionType) {
             ParseTreeNode *expr;
         
             /* local arrays are not yet supported */
@@ -392,16 +416,15 @@ static void ParseDim(ParseContext *c)
             if (c->pass == 2) {
             
                 /* add the local symbol */
-                AddLocal(c, name, type, -F_SIZE - c->localOffset - 1);
-                c->localOffset += ValueSize(type, 0);
+                AddLocal(c, name, type, -F_SIZE - c->function->u.functionDefinition.localOffset - 1);
+                c->function->u.functionDefinition.localOffset += ValueSize(type, 0);
                 
                 /* compile the initialization code */
                 if (expr) {
-                    ParseTreeNode *var = GetSymbolRef(c, name);
-                    PVAL pv;
-                    code_lvalue(c, var, &pv);
-                    code_rvalue(c, expr);
-                    (*pv.fcn)(c, PV_STORE, &pv);
+                    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeLetStatement);
+                    node->u.letStatement.lvalue = GetSymbolRef(c, name);
+                    node->u.letStatement.rvalue = expr;
+                    AddNodeToList(c, &c->bptr->pNextStatement, node);
                 }
             }
         }
@@ -725,76 +748,67 @@ static int TypesCompatible(Type *type1, Type *type2)
 /* ParseImpliedLetOrFunctionCall - parse an implied let statement or a function call */
 static void ParseImpliedLetOrFunctionCall(ParseContext *c)
 {
-    ParseTreeNode *expr;
-    Type *type;
+    ParseTreeNode *node, *expr;
     Token tkn;
-    PVAL pv;
     expr = ParsePrimary(c);
     switch (tkn = GetToken(c)) {
     case '=':
-        type = ParseRValue(c);
-        if (!TypesCompatible(expr->type, type))
-            ParseError(c, "type mismatch");
-        code_lvalue(c, expr, &pv);
-        (*pv.fcn)(c, PV_STORE, &pv);
+        node = NewParseTreeNode(c, NodeTypeLetStatement);
+        node->u.letStatement.lvalue = expr;
+        node->u.letStatement.rvalue = ParseExpr(c);
         break;
     default:
         SaveToken(c, tkn);
-        code_rvalue(c, expr);
-        putcbyte(c, OP_DROP);
+        node = NewParseTreeNode(c, NodeTypeCallStatement);
+        node->u.callStatement.expr = expr;
         break;
     }
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
     FRequire(c, T_EOL);
 }
 
 /* ParseLet - parse the 'LET' statement */
 static void ParseLet(ParseContext *c)
 {
-    ParseTreeNode *lvalue;
-    PVAL pv;
-    lvalue = ParsePrimary(c);
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeLetStatement);
+    node->u.letStatement.lvalue = ParsePrimary(c);
     FRequire(c, '=');
-    ParseRValue(c);
-    code_lvalue(c, lvalue, &pv);
-    if (lvalue->type->id != pv.type->id)
-        ParseError(c, "type mismatch");
-    (*pv.fcn)(c, PV_STORE, &pv);
+    node->u.letStatement.rvalue = ParseExpr(c);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
     FRequire(c, T_EOL);
 }
 
 /* ParseIf - parse the 'IF' statement */
 static void ParseIf(ParseContext *c)
 {
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeIfStatement);
     Token tkn;
-    ParseRValue(c);
+    node->u.ifStatement.test = ParseExpr(c);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
     FRequire(c, T_THEN);
-    PushBlock(c);
-    c->bptr->type = BLOCK_IF;
-    putcbyte(c, OP_BRF);
-    c->bptr->u.ifBlock.nxt = putcword(c, 0);
-    c->bptr->u.ifBlock.end = 0;
+    PushBlock(c, BLOCK_IF, node);
+    c->bptr->pNextStatement = &node->u.ifStatement.thenStatements;
     if ((tkn = GetToken(c)) != T_EOL) {
         ParseStatement(c, tkn);
-        fixupbranch(c, c->bptr->u.ifBlock.nxt, codeaddr(c));
         PopBlock(c);
     }
-    else
-        Require(c, tkn, T_EOL);
+    Require(c, tkn, T_EOL);
 }
 
 /* ParseElseIf - parse the 'ELSE IF' statement */
 static void ParseElseIf(ParseContext *c)
 {
-    switch (CurrentBlockType(c)) {
+    NodeListEntry **pNext;
+    ParseTreeNode *node;
+    switch (c->bptr->type) {
     case BLOCK_IF:
-        putcbyte(c, OP_BR);
-        c->bptr->u.ifBlock.end = putcword(c, c->bptr->u.ifBlock.end);
-        fixupbranch(c, c->bptr->u.ifBlock.nxt, codeaddr(c));
-        c->bptr->u.ifBlock.nxt = 0;
-        ParseRValue(c);
+        node = NewParseTreeNode(c, NodeTypeIfStatement);
+        pNext = &c->bptr->node->u.ifStatement.elseStatements;
+        AddNodeToList(c, &pNext, node);
+        c->bptr->node = node;
+        node->u.ifStatement.test = ParseExpr(c);
+        c->bptr->pNextStatement = &node->u.ifStatement.thenStatements;
         FRequire(c, T_THEN);
-        putcbyte(c, OP_BRF);
-        c->bptr->u.ifBlock.nxt = putcword(c, 0);
         FRequire(c, T_EOL);
         break;
     default:
@@ -806,14 +820,10 @@ static void ParseElseIf(ParseContext *c)
 /* ParseElse - parse the 'ELSE' statement */
 static void ParseElse(ParseContext *c)
 {
-    int end;
-    switch (CurrentBlockType(c)) {
+    switch (c->bptr->type) {
     case BLOCK_IF:
-        putcbyte(c, OP_BR);
-        end = putcword(c, c->bptr->u.ifBlock.end);
-        fixupbranch(c, c->bptr->u.ifBlock.nxt, codeaddr(c));
         c->bptr->type = BLOCK_ELSE;
-        c->bptr->u.elseBlock.end = end;
+        c->bptr->pNextStatement = &c->bptr->node->u.ifStatement.elseStatements;
         FRequire(c, T_EOL);
         break;
     default:
@@ -825,14 +835,9 @@ static void ParseElse(ParseContext *c)
 /* ParseEndIf - parse the 'END IF' statement */
 static void ParseEndIf(ParseContext *c)
 {
-    switch (CurrentBlockType(c)) {
+    switch (c->bptr->type) {
     case BLOCK_IF:
-        fixupbranch(c, c->bptr->u.ifBlock.nxt, codeaddr(c));
-        fixupbranch(c, c->bptr->u.ifBlock.end, codeaddr(c));
-        PopBlock(c);
-        break;
     case BLOCK_ELSE:
-        fixupbranch(c, c->bptr->u.elseBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -845,228 +850,136 @@ static void ParseEndIf(ParseContext *c)
 /* ParseSelect - parse the 'SELECT' statement */
 static void ParseSelect(ParseContext *c)
 {
-    ParseRValue(c);
-    PushBlock(c);
-    c->bptr->type = BLOCK_SELECT;
-    c->bptr->u.selectBlock.first = VMTRUE;
-    c->bptr->u.selectBlock.nxt = 0;
-    c->bptr->u.selectBlock.end = 0;
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeSelectStatement);
+    node->u.selectStatement.expr = ParseExpr(c);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    PushBlock(c, BLOCK_SELECT, node);
+    c->bptr->pNextStatement = &node->u.selectStatement.caseStatements;
     FRequire(c, T_EOL);
 }
 
 /* ParseCase - parse the 'CASE' statement */
 static void ParseCase(ParseContext *c)
 {
+    ParseTreeNode *node;
     Token tkn;
-
+    
+    if (c->bptr->type == BLOCK_CASE)
+        PopBlock(c);
+    if (c->bptr->type != BLOCK_SELECT)
+        ParseError(c, "CASE outside of SELECT");
+        
+    /* make a new case statement node */
+    node = NewParseTreeNode(c, NodeTypeCaseStatement);
+    
     /* handle 'CASE ELSE' statement */
     if ((tkn = GetToken(c)) == T_ELSE) {
-        int end;
-        switch (CurrentBlockType(c)) {
-        case BLOCK_SELECT:
-
-            /* finish the previous case */
-            if (c->bptr->u.selectBlock.first) {
-                c->bptr->u.selectBlock.first = VMFALSE;
-                end = 0;
-            }
-            else {
-                putcbyte(c, OP_BR);
-                end = putcword(c, c->bptr->u.selectBlock.end);
-            }
-
-            /* start the else case */
-            fixupbranch(c, c->bptr->u.selectBlock.nxt, codeaddr(c));
-            putcbyte(c, OP_DROP);
-            c->bptr->type = BLOCK_CASE_ELSE;
-            c->bptr->u.caseElseBlock.end = end;
-            break;
-        case BLOCK_CASE_ELSE:
-            ParseError(c, "only one CASE ELSE allowed in a SELECT");
-            break;
-        default:
-            ParseError(c, "CASE ELSE without a matching SELECT");
-            break;
-        }
         FRequire(c, T_EOL);
+        if (c->bptr->node->u.selectStatement.elseStatements)
+            ParseError(c, "only one CASE ELSE clause allowed");
+        c->bptr->node->u.selectStatement.elseStatements = node;
     }
 
     /* handle 'CASE expr...' statement */
     else {
-        int alt = 0;
-        int body = 0;
+        CaseListEntry **pNext, *entry;
+
         SaveToken(c, tkn);
-        switch (CurrentBlockType(c)) {
-        case BLOCK_SELECT:
 
-            /* finish the previous case */
-            if (c->bptr->u.selectBlock.first)
-                c->bptr->u.selectBlock.first = VMFALSE;
-            else {
-                putcbyte(c, OP_BR);
-                c->bptr->u.selectBlock.end = putcword(c, c->bptr->u.selectBlock.end);
+        AddNodeToList(c, &c->bptr->pNextStatement, node);
+        pNext = &node->u.caseStatement.cases;
+        
+        /* handle a list of comma separated expressions or ranges */
+        do {
+
+            /* parse the single value or begining of a range */
+            entry = (CaseListEntry *)LocalAlloc(c, sizeof(CaseListEntry));
+            entry->fromExpr = ParseExpr(c);
+            entry->next = NULL;
+            *pNext = entry;
+            pNext = &entry->next;
+
+            /* handle an 'expr TO expr' range */
+            if ((tkn = GetToken(c)) == T_TO) {
+                entry->toExpr = ParseExpr(c);
             }
-            
-            fixupbranch(c, c->bptr->u.selectBlock.nxt, codeaddr(c));
-            c->bptr->u.selectBlock.nxt = 0;
 
-            /* handle a list of comma separated expressions or ranges */
-            do {
+            /* handle a single expression */
+            else {
+                SaveToken(c, tkn);
+                entry->toExpr = NULL;
+            }
 
-                if (alt) {
-                    fixupbranch(c, alt, codeaddr(c));
-                    alt = 0;
-                }
-
-                putcbyte(c, OP_DUP);
-                ParseRValue(c);
-
-                /* handle an 'expr TO expr' range */
-                if ((tkn = GetToken(c)) == T_TO) {
-
-                    /* check the lower bound */
-                    putcbyte(c, OP_GE);
-                    putcbyte(c, OP_BRF);
-                    alt = putcword(c, alt);
-
-                    /* check the upper bound */
-                    putcbyte(c, OP_DUP);
-                    ParseRValue(c);
-                    putcbyte(c, OP_LE);
-                }
-
-                /* handle a single expression */
-                else {
-                    SaveToken(c, tkn);
-                    putcbyte(c, OP_EQ);
-                }
-
-                /* more expressions or ranges follow */
-                if ((tkn = GetToken(c)) == ',') {
-                    putcbyte(c, OP_BRT);
-                    body = putcword(c, body);
-                }
-
-                /* last expression or range */
-                else {
-                    putcbyte(c, OP_BRF);
-                    c->bptr->u.selectBlock.nxt = putcword(c, c->bptr->u.selectBlock.nxt);
-                }
-            } while (tkn == ',');
-            c->bptr->u.selectBlock.nxt = merge(c, c->bptr->u.selectBlock.nxt, alt);
-            fixupbranch(c, body, codeaddr(c));
-            putcbyte(c, OP_DROP);
-            Require(c, tkn, T_EOL);
-            break;
-        default:
-            ParseError(c, "CASE without a matching SELECT");
-            break;
-        }
+        } while ((tkn = GetToken(c)) == ',');
+        
+        Require(c, tkn, T_EOL);
     }
+
+    PushBlock(c, BLOCK_CASE, node);
+    c->bptr->pNextStatement = &node->u.caseStatement.bodyStatements;
 }
 
 /* ParseEndSelect - parse the 'END SELECT' statement */
 static void ParseEndSelect(ParseContext *c)
 {
-    switch (CurrentBlockType(c)) {
-    case BLOCK_SELECT:
-        fixupbranch(c, c->bptr->u.selectBlock.nxt, codeaddr(c));
-        putcbyte(c, OP_DROP);
-        fixupbranch(c, c->bptr->u.selectBlock.end, codeaddr(c));
+    if (c->bptr->type == BLOCK_CASE) {
         PopBlock(c);
-        break;
-    case BLOCK_CASE_ELSE:
-        fixupbranch(c, c->bptr->u.caseElseBlock.end, codeaddr(c));
-        PopBlock(c);
-        break;
-    default:
-        ParseError(c, "END SELECT without a matching SELECT");
-        break;
     }
+    if (c->bptr->type == BLOCK_SELECT) {
+        PopBlock(c);
+    }
+    else
+        ParseError(c, "END SELECT without a matching SELECT");
     FRequire(c, T_EOL);
 }
 
 /* ParseEnd - parse the 'END' statement */
 static void ParseEnd(ParseContext *c)
 {
-    putcbyte(c, OP_HALT);
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeEndStatement);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
     FRequire(c, T_EOL);
 }
 
 /* ParseFor - parse the 'FOR' statement */
 static void ParseFor(ParseContext *c)
 {
-    ParseTreeNode *var, *step;
-    VMUVALUE test, body, inst;
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeForStatement);
     Token tkn;
-    PVAL pv;
 
-    PushBlock(c);
-    c->bptr->type = BLOCK_FOR;
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+
+    PushBlock(c, BLOCK_FOR, node);
+    c->bptr->pNextStatement = &node->u.forStatement.bodyStatements;
 
     /* get the control variable */
     FRequire(c, T_IDENTIFIER);
-    var = GetSymbolRef(c, c->token);
-    code_lvalue(c, var, &pv);
-    FRequire(c, '=');
+    node->u.forStatement.var = GetSymbolRef(c, c->token);
 
     /* parse the starting value expression */
-    ParseRValue(c);
+    FRequire(c, '=');
+    node->u.forStatement.startExpr = ParseExpr(c);
 
     /* parse the TO expression and generate the loop termination test */
-    test = codeaddr(c);
-    (*pv.fcn)(c, PV_STORE, &pv);
-    (*pv.fcn)(c, PV_LOAD, &pv);
     FRequire(c, T_TO);
-    ParseRValue(c);
-    putcbyte(c, OP_LE);
-    putcbyte(c, OP_BRT);
-    body = putcword(c, 0);
-
-    /* branch to the end if the termination test fails */
-    putcbyte(c, OP_BR);
-    c->bptr->u.forBlock.end = putcword(c, 0);
-    
-    /* update the for variable after an iteration of the loop */
-    c->bptr->u.forBlock.nxt = codeaddr(c);
-    (*pv.fcn)(c, PV_LOAD, &pv);
+    node->u.forStatement.endExpr = ParseExpr(c);
 
     /* get the STEP expression */
     if ((tkn = GetToken(c)) == T_STEP) {
-        step = ParseExpr(c);
-        code_rvalue(c, step);
+        node->u.forStatement.stepExpr = ParseExpr(c);
         tkn = GetToken(c);
     }
-
-    /* no step so default to one */
-    else {
-        putcbyte(c, OP_SLIT);
-        putcbyte(c, 1);
-    }
-
-    /* generate the increment code */
-    putcbyte(c, OP_ADD);
-    inst = putcbyte(c, OP_BR);
-    putcword(c, test - inst - 1 - sizeof(VMVALUE));
-
-    /* branch to the loop body */
-    fixupbranch(c, body, codeaddr(c));
     Require(c, tkn, T_EOL);
 }
 
 /* ParseNext - parse the 'NEXT' statement */
 static void ParseNext(ParseContext *c)
 {
-    ParseTreeNode *var;
-    int inst;
-    switch (CurrentBlockType(c)) {
+    switch (c->bptr->type) {
     case BLOCK_FOR:
         FRequire(c, T_IDENTIFIER);
-        var = GetSymbolRef(c, c->token);
-        /* BUG: check to make sure it matches the symbol used in the FOR */
-        inst = putcbyte(c, OP_BR);
-        putcword(c, c->bptr->u.forBlock.nxt - inst - 1 - sizeof(VMVALUE));
-        fixupbranch(c, c->bptr->u.forBlock.end, codeaddr(c));
+        //if (GetSymbolRef(c, c->token) != c->bptr->node->u.forStatement.var)
+        //    ParseError(c, "wrong variable in FOR");
         PopBlock(c);
         break;
     default:
@@ -1079,46 +992,41 @@ static void ParseNext(ParseContext *c)
 /* ParseDo - parse the 'DO' statement */
 static void ParseDo(ParseContext *c)
 {
-    PushBlock(c);
-    c->bptr->type = BLOCK_DO;
-    c->bptr->u.doBlock.nxt = codeaddr(c);
-    c->bptr->u.doBlock.end = 0;
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeLoopStatement);
+    node->u.loopStatement.test = NULL;
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    PushBlock(c, BLOCK_DO, node);
+    c->bptr->pNextStatement = &node->u.loopStatement.bodyStatements;
     FRequire(c, T_EOL);
 }
 
 /* ParseDoWhile - parse the 'DO WHILE' statement */
 static void ParseDoWhile(ParseContext *c)
 {
-    PushBlock(c);
-    c->bptr->type = BLOCK_DO;
-    c->bptr->u.doBlock.nxt = codeaddr(c);
-    ParseRValue(c);
-    putcbyte(c, OP_BRF);
-    c->bptr->u.doBlock.end = putcword(c, 0);
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeDoWhileStatement);
+    node->u.loopStatement.test = ParseExpr(c);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    PushBlock(c, BLOCK_DO, node);
+    c->bptr->pNextStatement = &node->u.loopStatement.bodyStatements;
     FRequire(c, T_EOL);
 }
 
 /* ParseDoUntil - parse the 'DO UNTIL' statement */
 static void ParseDoUntil(ParseContext *c)
 {
-    PushBlock(c);
-    c->bptr->type = BLOCK_DO;
-    c->bptr->u.doBlock.nxt = codeaddr(c);
-    ParseRValue(c);
-    putcbyte(c, OP_BRT);
-    c->bptr->u.doBlock.end = putcword(c, 0);
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeDoUntilStatement);
+    node->u.loopStatement.test = ParseExpr(c);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    PushBlock(c, BLOCK_DO, node);
+    c->bptr->pNextStatement = &node->u.loopStatement.bodyStatements;
     FRequire(c, T_EOL);
 }
 
 /* ParseLoop - parse the 'LOOP' statement */
 static void ParseLoop(ParseContext *c)
 {
-    int inst;
-    switch (CurrentBlockType(c)) {
+    switch (c->bptr->type) {
     case BLOCK_DO:
-        inst = putcbyte(c, OP_BR);
-        putcword(c, c->bptr->u.doBlock.nxt - inst - 1 - sizeof(VMVALUE));
-        fixupbranch(c, c->bptr->u.doBlock.end, codeaddr(c));
         PopBlock(c);
         break;
     default:
@@ -1131,13 +1039,12 @@ static void ParseLoop(ParseContext *c)
 /* ParseLoopWhile - parse the 'LOOP WHILE' statement */
 static void ParseLoopWhile(ParseContext *c)
 {
-    int inst;
-    switch (CurrentBlockType(c)) {
+    switch (c->bptr->type) {
     case BLOCK_DO:
-        ParseRValue(c);
-        inst = putcbyte(c, OP_BRT);
-        putcword(c, c->bptr->u.doBlock.nxt - inst - 1 - sizeof(VMVALUE));
-        fixupbranch(c, c->bptr->u.doBlock.end, codeaddr(c));
+        if (c->bptr->node->nodeType != NodeTypeLoopStatement)
+            ParseError(c, "can't have a test at both the top and bottom of a loop");
+        c->bptr->node->nodeType = NodeTypeLoopWhileStatement;
+        c->bptr->node->u.loopStatement.test = ParseExpr(c);
         PopBlock(c);
         break;
     default:
@@ -1150,13 +1057,12 @@ static void ParseLoopWhile(ParseContext *c)
 /* ParseLoopUntil - parse the 'LOOP UNTIL' statement */
 static void ParseLoopUntil(ParseContext *c)
 {
-    int inst;
-    switch (CurrentBlockType(c)) {
+    switch (c->bptr->type) {
     case BLOCK_DO:
-        ParseRValue(c);
-        inst = putcbyte(c, OP_BRF);
-        putcword(c, c->bptr->u.doBlock.nxt - inst - 1 - sizeof(VMVALUE));
-        fixupbranch(c, c->bptr->u.doBlock.end, codeaddr(c));
+        if (c->bptr->node->nodeType != NodeTypeLoopStatement)
+            ParseError(c, "can't have a test at both the top and bottom of a loop");
+        c->bptr->node->nodeType = NodeTypeLoopUntilStatement;
+        c->bptr->node->u.loopStatement.test = ParseExpr(c);
         PopBlock(c);
         break;
     default:
@@ -1169,6 +1075,9 @@ static void ParseLoopUntil(ParseContext *c)
 /* ParseAsm - parse the 'ASM ... END ASM' statement */
 static void ParseAsm(ParseContext *c)
 {
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeAsmStatement);
+    uint8_t *start = c->cptr;
+    int length;
     Token tkn;
     
     /* check for the end of the 'ASM' statement */
@@ -1196,6 +1105,14 @@ static void ParseAsm(ParseContext *c)
         /* assemble a single instruction */
         Assemble(c, c->token);
     }
+    
+    /* store the code */
+    length = c->cptr - start;
+    node->u.asmStatement.code = LocalAlloc(c, length);
+    node->u.asmStatement.length = length;
+    memcpy(node->u.asmStatement.code, start, length);
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    c->cptr = start;
     
     /* check for the end of the 'END ASM' statement */
     FRequire(c, T_EOL);
@@ -1241,38 +1158,85 @@ static VMVALUE ParseIntegerConstant(ParseContext *c)
     return expr->u.integerLit.value;
 }
 
-/* ParseStop - parse the 'STOP' statement */
-static void ParseStop(ParseContext *c)
+/* DefineLabel - define a label */
+static void DefineLabel(ParseContext *c, char *name)
 {
-    putcbyte(c, OP_HALT);
-    FRequire(c, T_EOL);
+    ParseTreeNode *node;
+    Label *label;
+    
+    /* check to see if the label is already in the table */
+    for (label = c->function->u.functionDefinition.labels; label != NULL; label = label->next)
+        if (strcasecmp(name, label->name) == 0) {
+            if (label->state != LS_UNDEFINED)
+                ParseError(c, "duplicate label: %s", label->name);
+            break;
+        }
+
+    /* allocate the label structure */
+    if (!label) {
+        label = (Label *)LocalAlloc(c, sizeof(Label) + strlen(name));
+        memset(label, 0, sizeof(Label));
+        strcpy(label->name, name);
+        label->state = LS_DEFINED;
+        label->next = c->function->u.functionDefinition.labels;
+        c->function->u.functionDefinition.labels = label;
+    }
+    
+    /* add a label definition node */
+    node = NewParseTreeNode(c, NodeTypeLabelDefinition);
+    node->u.labelDefinition.label = label;
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
 }
 
 /* ParseGoto - parse the 'GOTO' statement */
 static void ParseGoto(ParseContext *c)
 {
+    ParseTreeNode *node;
+    Label *label;
+    
     FRequire(c, T_IDENTIFIER);
-    putcbyte(c, OP_BR);
-    putcword(c, ReferenceLabel(c, c->token, codeaddr(c)));
+
+    /* check to see if the label is already in the table */
+    for (label = c->function->u.functionDefinition.labels; label != NULL; label = label->next)
+        if (strcasecmp(c->token, label->name) == 0)
+            break;
+
+    /* allocate the label structure */
+    if (!label) {
+        label = (Label *)LocalAlloc(c, sizeof(Label) + strlen(c->token));
+        memset(label, 0, sizeof(Label));
+        strcpy(label->name, c->token);
+        label->state = LS_UNDEFINED;
+        label->next = c->function->u.functionDefinition.labels;
+        c->function->u.functionDefinition.labels = label;
+    }
+
+    node = NewParseTreeNode(c, NodeTypeGotoStatement);
+    node->u.gotoStatement.label = label;
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
+    
     FRequire(c, T_EOL);
 }
 
 /* ParseReturn - parse the 'RETURN' statement */
 static void ParseReturn(ParseContext *c)
 {
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeReturnStatement);
     Token tkn;
             
     /* return with no value returns zero */
     if ((tkn = GetToken(c)) == T_EOL)
-        putcbyte(c, OP_RETURNZ);
+        node->u.returnStatement.expr = NULL;
         
     /* handle return with a value */
     else {
         SaveToken(c, tkn);
-        ParseRValue(c);
-        putcbyte(c, OP_RETURN);
+        node->u.returnStatement.expr = ParseExpr(c);
         FRequire(c, T_EOL);
     }
+    
+    /* add the statement to the current function */
+    AddNodeToList(c, &c->bptr->pNextStatement, node);
 }
 
 /* ParseInput - parse the 'INPUT' statement */
@@ -1293,7 +1257,6 @@ static void ParseInput(ParseContext *c)
         devExpr = NewParseTreeNode(c, NodeTypeIntegerLit);
         devExpr->type = &c->integerType;
         devExpr->u.integerLit.value = 0;
-        
     }
     
     /* peek at the next token */
@@ -1303,33 +1266,30 @@ static void ParseInput(ParseContext *c)
     /* check for a prompt string */
     if (tkn == T_STRING) {
         expr = ParseExpr(c);
-        PrintFunctionCall(c, "printStr", devExpr, expr);
-        putcbyte(c, OP_DROP);
+        AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printStr", devExpr, expr));
         FRequire(c, ';');
     }
     
     /* force reading a new line */
-    PrintFunctionCall(c, "inputGetLine", devExpr, NULL);
-    putcbyte(c, OP_DROP);
+    AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "inputGetLine", devExpr, NULL));
 
     /* parse each input variable */
     if ((tkn = GetToken(c)) == T_IDENTIFIER) {
         SaveToken(c, tkn);
         do {
-            ParseTreeNode *expr;
-            PVAL pv;
+            ParseTreeNode *node;
             expr = ParsePrimary(c);
             switch (expr->type->id) {
             case TYPE_INTEGER:
             case TYPE_BYTE:
-                PrintFunctionCall(c, "inputInt", devExpr, NULL);
-                code_lvalue(c, expr, &pv);
-                (*pv.fcn)(c, PV_STORE, &pv);
+                node = NewParseTreeNode(c, NodeTypeLetStatement);
+                node->u.letStatement.lvalue = expr;
+                node->u.letStatement.rvalue = BuildHandlerFunctionCall(c, "inputInt", devExpr, NULL);
+                AddNodeToList(c, &c->bptr->pNextStatement, node);
                 break;
             case TYPE_ARRAY:
             case TYPE_POINTER:
-                PrintFunctionCall(c, "inputStr", devExpr, expr);
-                putcbyte(c, OP_DROP);
+                AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "inputStr", devExpr, expr));
                 break;
             default:
                 ParseError(c, "invalid argument to INPUT");
@@ -1364,8 +1324,7 @@ static void ParsePrint(ParseContext *c)
         switch (tkn) {
         case ',':
             needNewline = VMFALSE;
-            PrintFunctionCall(c, "printTab", devExpr, NULL);
-            putcbyte(c, OP_DROP);
+            AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printTab", devExpr, NULL));
             break;
         case ';':
             needNewline = VMFALSE;
@@ -1379,13 +1338,11 @@ static void ParsePrint(ParseContext *c)
             case TYPE_POINTER:
                 if (expr->type->u.pointerInfo.targetType->id != TYPE_BYTE)
                     ParseError(c, "invalid argument to PRINT");
-                PrintFunctionCall(c, "printStr", devExpr, expr);
-                putcbyte(c, OP_DROP);
+                AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printStr", devExpr, expr));
                 break;
             case TYPE_INTEGER:
             case TYPE_BYTE:
-                PrintFunctionCall(c, "printInt", devExpr, expr);
-                putcbyte(c, OP_DROP);
+                AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printInt", devExpr, expr));
                 break;
             default:
                 ParseError(c, "invalid argument to PRINT");
@@ -1395,17 +1352,23 @@ static void ParsePrint(ParseContext *c)
         }
     }
 
-    if (needNewline) {
-        PrintFunctionCall(c, "printNL", devExpr, NULL);
-        putcbyte(c, OP_DROP);
-    }
+    if (needNewline)
+        AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printNL", devExpr, NULL));
 }
 
-/* PrintFunctionCall - compile a call to a runtime print function */
-static void PrintFunctionCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr)
+/* BuildHandlerCall - compile a call to a runtime print function */
+static ParseTreeNode *BuildHandlerCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr)
+{
+    ParseTreeNode *node = NewParseTreeNode(c, NodeTypeCallStatement);
+    node->u.callStatement.expr = BuildHandlerFunctionCall(c, name, devExpr, expr);
+    return node;
+}
+
+/* BuildHandlerFunctionCall - compile a call to a runtime print function */
+static ParseTreeNode *BuildHandlerFunctionCall(ParseContext *c, char *name, ParseTreeNode *devExpr, ParseTreeNode *expr)
 {
     ParseTreeNode *functionNode, *callNode;
-    ExprListEntry *actual;
+    NodeListEntry *actual;
     Type *functionType;
     Symbol *symbol;
 
@@ -1415,9 +1378,9 @@ static void PrintFunctionCall(ParseContext *c, char *name, ParseTreeNode *devExp
     functionType = symbol->type;
     
     if (functionType->id != TYPE_FUNCTION)
-        ParseError(c, "print helper not a function: %s", name);
+        ParseError(c, "handler is not a function: %s", name);
     else if (functionType->u.functionInfo.arguments.count != (expr ? 2 : 1))
-        ParseError(c, "print helper has wrong prototype: %s", name);
+        ParseError(c, "handler has wrong prototype: %s", name);
         
     functionNode = NewParseTreeNode(c, NodeTypeFunctionLit);
     functionNode->type = functionType;
@@ -1430,84 +1393,29 @@ static void PrintFunctionCall(ParseContext *c, char *name, ParseTreeNode *devExp
     callNode->u.functionCall.fcn = functionNode;
     callNode->u.functionCall.args = NULL;
     
-    actual = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-    actual->expr = devExpr;
+    actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    actual->node = devExpr;
     actual->next = callNode->u.functionCall.args;
     callNode->u.functionCall.args = actual;
     ++callNode->u.functionCall.argc;
 
     if (expr) {
-        actual = (ExprListEntry *)LocalAlloc(c, sizeof(ExprListEntry));
-        actual->expr = expr;
+        actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        actual->node = expr;
         actual->next = callNode->u.functionCall.args;
         callNode->u.functionCall.args = actual;
         ++callNode->u.functionCall.argc;
     }
 
-    code_rvalue(c, callNode);
-}
-
-/* DefineLabel - define a local label */
-static void DefineLabel(ParseContext *c, char *name, int offset)
-{
-    Label *label;
-    
-    /* check to see if the label is already in the table */
-    for (label = c->labels; label != NULL; label = label->next)
-        if (strcasecmp(name, label->name) == 0) {
-            if (!label->fixups)
-                ParseError(c, "duplicate label: %s", name);
-            else {
-                fixupbranch(c, label->fixups, offset);
-                label->offset = offset;
-                label->fixups = 0;
-            }
-            return;
-        }
-
-    /* allocate the label structure */
-    label = (Label *)LocalAlloc(c, sizeof(Label) + strlen(name));
-    memset(label, 0, sizeof(Label));
-    strcpy(label->name, name);
-    label->offset = offset;
-    label->next = c->labels;
-    c->labels = label;
-}
-
-/* ReferenceLabel - add a reference to a local label */
-static int ReferenceLabel(ParseContext *c, char *name, int offset)
-{
-    Label *label;
-    
-    /* check to see if the label is already in the table */
-    for (label = c->labels; label != NULL; label = label->next)
-        if (strcasecmp(name, label->name) == 0) {
-            int link;
-            if (!(link = label->fixups))
-                return label->offset - offset - sizeof(VMVALUE);
-            else {
-                label->fixups = offset;
-                return link;
-            }
-        }
-
-    /* allocate the label structure */
-    label = (Label *)LocalAlloc(c, sizeof(Label) + strlen(name));
-    memset(label, 0, sizeof(Label));
-    strcpy(label->name, name);
-    label->fixups = offset;
-    label->next = c->labels;
-    c->labels = label;
-
-    /* return zero to terminate the fixup list */
-    return 0;
+    /* return the function call node */
+    return callNode;
 }
 
 /* CheckLabels - check for undefined labels */
 void CheckLabels(ParseContext *c)
 {
     Label *label;
-    for (label = c->labels; label != NULL; label = label->next) {
+    for (label = c->function->u.functionDefinition.labels; label != NULL; label = label->next) {
         if (label->fixups)
             Fatal(c->sys, "undefined label: %s", label->name);
     }
@@ -1517,27 +1425,23 @@ void CheckLabels(ParseContext *c)
 void DumpLabels(ParseContext *c)
 {
     Label *label;
-    if (c->labels) {
+    if (c->function->u.functionDefinition.labels) {
         VM_printf("labels:\n");
-        for (label = c->labels; label != NULL; label = label->next)
+        for (label = c->function->u.functionDefinition.labels; label != NULL; label = label->next)
             VM_printf("  %08x %s\n", label->offset, label->name);
     }
 }
 
-/* CurrentBlockType - make sure there is a block on the stack */
-BlockType  CurrentBlockType(ParseContext *c)
-{
-    return c->bptr < c->blockBuf ? BLOCK_NONE : c->bptr->type;
-}
-
-/* PushBlock - push a block on the block stack */
-static void PushBlock(ParseContext *c)
+/* PushBlock - push a block on the stack */
+static void PushBlock(ParseContext *c, BlockType type, ParseTreeNode *node)
 {
     if (++c->bptr >= c->btop)
         Fatal(c->sys, "statements too deeply nested");
+    c->bptr->type = type;
+    c->bptr->node = node;
 }
 
-/* PopBlock - pop a block off the block stack */
+/* PopBlock - pop a block off the stack */
 static void PopBlock(ParseContext *c)
 {
     --c->bptr;

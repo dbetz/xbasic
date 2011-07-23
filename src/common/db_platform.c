@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <ctype.h>
 #include "db_system.h"
 
@@ -92,6 +93,21 @@ void VM_putchar(int ch)
 
 #endif
 
+/**************/
+/* VM_setpath */
+/**************/
+
+static char path[1024] = "";
+
+void VM_setpath(const char *p)
+{
+    strcpy(path, p);
+}
+
+/***************/
+/* VM_fullpath */
+/***************/
+
 #if defined(WIN32)
 
 #include <windows.h>
@@ -100,32 +116,48 @@ void VM_putchar(int ch)
 /* VM_fullpath - get the full path to a file in the application directory */
 const char *VM_fullpath(const char *name)
 {
-    static char path[1024];
+    static char fullpath[1024];
     char *p;
     
+    /* first check for command line path */
+    if (path[0]) {
+        strcpy(fullpath, path);
+        strcat(fullpath, "\\");
+        strcat(fullpath, name);
+        return fullpath;
+    }
+    
+	/* first check for the XB_INC environment variable */
+    else if ((p = getenv("XB_INC")) != NULL) {
+        strcpy(fullpath, p);
+        strcat(fullpath, "\\");
+        strcat(fullpath, name);
+        return fullpath;
+    }
+
     /* get the full path to the executable */
-    if (!GetModuleFileNameEx(GetCurrentProcess(), NULL, path, sizeof(path)))
+    if (!GetModuleFileNameEx(GetCurrentProcess(), NULL, fullpath, sizeof(fullpath)))
         return NULL;
 
     /* remove the executable filename */
-    if ((p = strrchr(path, '\\')) != NULL)
+    if ((p = strrchr(fullpath, '\\')) != NULL)
         *p = '\0';
 
     /* remove the immediate directory containing the executable (usually 'bin') */
-    if ((p = strrchr(path, '\\')) != NULL) {
+    if ((p = strrchr(fullpath, '\\')) != NULL) {
         *p = '\0';
         
         /* check for the 'Release' or 'Debug' build directories used by Visual C++ */
         if (strcmp(&p[1], "Release") == 0 || strcmp(&p[1], "Debug") == 0) {
-            if ((p = strrchr(path, '\\')) != NULL)
+            if ((p = strrchr(fullpath, '\\')) != NULL)
                 *p = '\0';
         }
     }
 
     /* generate the full path to the file */
-    strcat(path, "\\include\\");
-    strcat(path, name);
-    return path;
+    strcat(fullpath, "\\include\\");
+    strcat(fullpath, name);
+    return fullpath;
 }
 
 #else
@@ -134,17 +166,29 @@ const char *VM_fullpath(const char *name)
 
 const char *VM_fullpath(const char *name)
 {
-    static char path[1024];
-    char *env = getenv("XB_INC");
-	if (!env)
+    static char fullpath[1024];
+    char *p;
+    
+    /* first check for command line path */
+    if (path[0])
+        p = path;
+    
+    /* check for the XB_INC environment variable */
+    else if (!(p = getenv("XB_INC")))
 		return NULL;
-	strcpy(path, env);
-	strcat(path, "/");
-	strcat(path, name);
-	return path;
+        
+    /* generate the full path to the file */
+    strcpy(fullpath, p);
+	strcat(fullpath, "/");
+	strcat(fullpath, name);
+	return fullpath;
 }
 
 #endif
+
+/************/
+/* VM_fopen */
+/************/
 
 FILE *VM_fopen(const char *name, const char *mode)
 {
@@ -157,10 +201,18 @@ FILE *VM_fopen(const char *name, const char *mode)
     return fp;
 }
 
+/********************/
+/* VM_CreateTmpFile */
+/********************/
+
 FILE *VM_CreateTmpFile(const char *name, const char *mode)
 {
     return fopen(name, mode);
 }
+
+/********************/
+/* VM_RemoveTmpFile */
+/********************/
 
 void VM_RemoveTmpFile(const char *name)
 {
