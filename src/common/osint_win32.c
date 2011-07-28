@@ -61,7 +61,7 @@ int serial_init(const char *port, unsigned long baud)
     state.Parity = NOPARITY;
     state.StopBits = ONESTOPBIT;
     state.fOutxDsrFlow = FALSE;
-    state.fDtrControl = DTR_CONTROL_ENABLE;
+    state.fDtrControl = DTR_CONTROL_DISABLE; // disable DTR flow control
     state.fOutxCtsFlow = FALSE;
     state.fRtsControl = RTS_CONTROL_DISABLE;
     state.fInX = FALSE;
