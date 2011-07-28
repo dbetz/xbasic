@@ -1,5 +1,6 @@
 export OS=macosx
-export PORT=/dev/tty.usbserial-A3TNQL8K
+#export PORT=/dev/cu.usbserial-A3TNQL8K
+export PORT=/dev/cu.usbserial-A8004ILf
 export BOARD=hub
 
 export XB_BIN=`pwd`/bin/$OS

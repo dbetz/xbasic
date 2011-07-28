@@ -15,7 +15,7 @@
 #define DEF_PORT    "/dev/ttyUSB0"
 #endif
 #ifdef MACOSX
-#define DEF_PORT    "/dev/tty.usbserial-A30005Dm"
+#define DEF_PORT    "/dev/tty.usbserial-A3TNQL8K"
 #endif
 #define DEF_BOARD   "c3"
 
