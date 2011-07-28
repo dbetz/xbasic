@@ -51,12 +51,12 @@ int iterate(void)
  * @param status - pointer to transaction status 0 on error
  * @returns bit state 1 or 0
  */
-int getBit(int* status)
+int getBit(int* status, int timeout)
 {
     uint8_t mybuf[2];
-    int rc = rx(mybuf, 1);
+    int rc = rx_timeout(mybuf, 1, timeout);
     if(status)
-        *status = rc;
+        *status = rc <= 0 ? 0 : 1;
     return *mybuf & 1;
 }
 
@@ -66,12 +66,12 @@ int getBit(int* status)
  * @param status - pointer to transaction status 0 on error
  * @returns bit state 1 or 0
  */
-int getAck(int* status)
+int getAck(int* status, int timeout)
 {
     uint8_t mybuf[2];
-    int rc = rx(mybuf, 1);
+    int rc = rx_timeout(mybuf, 1, timeout);
     if(status)
-        *status = rc;
+        *status = rc <= 0 ? 0 : 1;
     return *mybuf & 1;
 }
 
@@ -167,23 +167,23 @@ int hwfind(void)
         mybuf[n] = iterate() | 0xfe;
     tx(mybuf, 251);
 
-    // send gobs of 0xF9 for id sync-up
+    // send gobs of 0xF9 for id sync-up - these clock out the LSFR bits and the id
     for(n = 0; n < 258; n++)
         mybuf[n] = 0xF9;
     tx(mybuf, 258);
 
-    //for(n = 0; n < 250; n++) printf("%d ", iterate() & 1);
+    //for(n = 0; n < 250; n++) printf("%d", iterate() & 1);
     //printf("\n\n");
 
     msleep(100);
-
+    
     // wait for response so we know we have a Propeller
     for(n = 0; n < 250; n++) {
         to = 0;
         do {
-            ii = getBit(&rc);
+            ii = getBit(&rc, 100);
         } while(rc == 0 && to++ < 100);
-        //printf("%d ", rc);
+        //printf("%d", rc);
         if(to > 100) {
             printf("Timeout waiting for response bit. Propeller Not Found!\n");
             return 0;
@@ -195,12 +195,12 @@ int hwfind(void)
             return 0;
         }
     }
-
+    
     //printf("Propeller Version ... ");
     rc = 0;
     for(n = 0; n < 8; n++) {
         rc >>= 1;
-        rc += getBit(0) ? 0x80 : 0;
+        rc += getBit(0, 100) ? 0x80 : 0;
     }
     //printf("%d\n",rc);
     return rc;
@@ -239,12 +239,9 @@ int upload(uint8_t* dlbuf, int count, int type)
     int  rc = 0;
     int  wv = 100;
     uint32_t data = 0;
+    uint8_t buf[1];
 
-    int  sendone = 1; // send one at a time ... Propeller can't handle a bigbuf blast.
-    int  position = 0;
     int  longcount = count/4;
-
-    uint8_t* bigbuf;
 
     // send type
     if(sendlong(type) == 0) {
@@ -257,44 +254,34 @@ int upload(uint8_t* dlbuf, int count, int type)
         printf("sendlong count failed.\n");
         return 1;
     }
-    //if(1) {
-    //} else position = encodelong(longcount, bigbuf, position);
 
     printf("Writing %d bytes to %s.\n",count,(type == DOWNLOAD_RUN_BINARY) ? "Propeller RAM":"EEPROM");
-    //msleep(100);
-
-    bigbuf = (uint8_t*)malloc(count*11+1); // for encodelong -> tx bigbuf only.
+    msleep(100);
 
     for(n = 0; n < count; n+=4) {
         //printf("%d ",n);
         data = dlbuf[n] | (dlbuf[n+1] << 8) | (dlbuf[n+2] << 16) | (dlbuf[n+3] << 24) ;
-        if(sendone) {
-            if(sendlong(data) == 0) {
-                printf("sendlong error");
-                free(bigbuf);
-                return 1;
-            }
+        if(sendlong(data) == 0) {
+            printf("sendlong error");
+            return 1;
         }
-        else position = encodelong(data, bigbuf, position);
         //if(n % 0x40 == 0) putchar('.');
     }
-    if(!sendone) tx(bigbuf, position);
 
     msleep(150);                // wait for checksum calculation on Propeller ... 95ms is minimum
-    sendlong(0xF9);
+    buf[0] = 0xF9;              // need to send this to get Propeller to send the ack
 
     printf("Verifying ... ");
     fflush(stdout);
 
     for(n = 0; n < wv; n++) {
-        msleep(25);
-        getAck(&rc);
+        tx(buf, 1);
+        getAck(&rc, 100);
         if(rc) break;
     }
     if(n >= wv) printf("Upload Timeout Error!\n");
     else        printf("Upload OK!\n");
 
-    free(bigbuf);
     return 0;
 }
 

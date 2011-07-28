@@ -20,6 +20,13 @@
 
 typedef int HANDLE;
 static HANDLE hSerial;
+static struct termios old_sparm;
+
+void chk(char *fun, int sts)
+{
+    if (sts != 0)
+        printf("%s failed\n", fun);
+}
 
 /**
  * open serial port
@@ -58,19 +65,23 @@ int serial_init(const char* port, unsigned long baud)
             break;
     }
 
-    // set parameters
-    bzero(&sparm, sizeof(sparm));
-    // 115200 bps, n18, local connection, enable receive
-    sparm.c_cflag = tbaud | CS8 | CLOCAL | CREAD;
-    // ignore parity | map CR to NL
-    sparm.c_iflag = IGNPAR | ICRNL;
-    // raw output
-    sparm.c_oflag = 0;
-    // disable echo
-    sparm.c_lflag = 0; // no ICANON;
+    /* open the port */
+    fcntl(hSerial, F_SETFL, 0);
 
-    tcflush(hSerial, TCIFLUSH);
-    tcsetattr(hSerial, TCSANOW, &sparm);
+    /* get the current options */
+    chk("tcgetattr", tcgetattr(hSerial, &old_sparm));
+    sparm = old_sparm;
+    
+    /* set raw input */
+    sparm.c_cflag     |= (CS8 | CLOCAL | CREAD);
+    sparm.c_lflag     &= ~(ICANON | ECHO | ECHOE | ISIG);
+    sparm.c_oflag     &= ~OPOST;
+    sparm.c_iflag     = IGNPAR | IGNBRK;
+    chk("cfsetispeed", cfsetispeed(&sparm, tbaud));
+    chk("cfsetospeed", cfsetospeed(&sparm, tbaud));
+
+    /* set the options */
+    chk("tcsetattr", tcsetattr(hSerial, TCSANOW, &sparm));
 
     return hSerial;
 }
@@ -80,6 +91,9 @@ int serial_init(const char* port, unsigned long baud)
  */
 void serial_done(void)
 {
+#ifdef TEST
+    tcsetattr(hSerial, TCSANOW, &old_sparm);
+#endif
     close(hSerial);
 }
 
@@ -93,7 +107,7 @@ int rx(uint8_t* buff, int n)
 {
     ssize_t bytes = read(hSerial, buff, n);
     if(bytes < 1) {
-        //printf("Error reading port\n");
+        printf("Error reading port: %d\n", (int)bytes);
         return 0;
     }
     return bytes;
@@ -153,18 +167,19 @@ int txwu(uint8_t* buff, int n, int waitu)
  */
 int rx_timeout(uint8_t* buff, int n, int timeout)
 {
-    struct pollfd set;
     ssize_t bytes = 0;
+    struct timeval toval;
+    fd_set set;
 
-    set.fd = hSerial;
-    set.events = POLLIN;
-    set.revents = POLLIN;
+    FD_ZERO(&set);
+    FD_SET(hSerial, &set);
 
-    // wait for data with poll for file
-    if(poll(&set,1,timeout) > 0) {
-        bytes = read(hSerial, buff, n);
-        //printf("%d byte(s)\n", bytes);
-        fflush(stdout);
+    toval.tv_sec = timeout / 1000;
+    toval.tv_usec = (timeout % 1000) * 1000;
+
+    if (select(hSerial + 1, &set, NULL, NULL, &toval) > 0) {
+        if (FD_ISSET(hSerial, &set))
+            bytes = read(hSerial, buff, n);
     }
 
     return (int)(bytes > 0 ? bytes : SERIAL_TIMEOUT);
@@ -179,9 +194,10 @@ void hwreset(void)
 {
     int cmd = TIOCM_DTR;
     ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR pin
-    msleep(25);
+    msleep(200);
     ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR pin
-    msleep(100);
+    msleep(2);
+    tcflush(hSerial, TCIFLUSH);
 }
 
 /**
