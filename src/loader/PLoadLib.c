@@ -38,6 +38,7 @@
 #include "osint.h"
 
 uint8_t LFSR = 80; // 'P'
+
 int iterate(void)
 {
     int bit = LFSR & 1;
@@ -76,33 +77,6 @@ int getAck(int* status, int timeout)
 }
 
 /**
- * decodelong ... decode a string to a long word
- * @param buff - uint8_t buffer
- * @param len - length of string
- * @returns long word
- */
-uint32_t decodelong(uint8_t* buff, int len)
-{
-    int n = 0;
-    int b4,b2,b1;
-    uint32_t data = 0;
-    uint32_t end = 0;
-    for(n = 0; n < len-1; n++) {
-        b4 = ((buff[n] & 0x7d) & (4 << 4)) >> 4;
-        b2 = ((buff[n] & 0x7d) & (2 << 2)) >> 2;
-        b1 = ((buff[n] & 0x7d) & 1);
-        data |= (b1 | b2 | b4) << (n*3);
-        //printf("\n0x%08x: %02x %02x %02x", data, b4, b2, b1);
-    }
-    b2 = ((buff[len-1] & 0x7d) & (2 << 2)) >> 2;
-    b1 = ((buff[len-1] & 0x7d) & 1) >> 0;
-    end = (b1 | b2) << 30;
-    data |= end;
-    //printf("\n0x%08x.", data);
-    return 0;
-}
-
-/**
  * makelong ... make an encoded long word to string
  * @param data - value to send
  * @param buff - uint8_t buffer
@@ -132,20 +106,6 @@ int sendlong(uint32_t data)
     uint8_t mybuf[12];
     makelong(data, mybuf);
     return tx(mybuf, 11);
-}
-
-/**
- * encodelong ... encode a long word to buffer for propeller
- * @param hSerial - file handle to serial port
- * @param data - value to send
- * @param bigbuf - buffer for encode ... user controls size
- * @param position - buffer position for encode
- * @returns next position for bigbuf
- */
-int encodelong(uint32_t data, uint8_t* bigbuf, int position)
-{
-    makelong(data, bigbuf);
-    return position+11;
 }
 
 /**
@@ -283,14 +243,6 @@ int upload(uint8_t* dlbuf, int count, int type)
     else        printf("Upload OK!\n");
 
     return 0;
-}
-
-char* strtoupper(char* s)
-{
-    int len = strlen(s);
-    while(--len >= 0)
-        s[len] = toupper((int)s[len]);
-    return s;
 }
 
 /**
