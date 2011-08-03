@@ -93,48 +93,42 @@ void VM_putchar(int ch)
 
 #endif
 
-/**************/
-/* VM_setpath */
-/**************/
+/****************/
+/* VM_AddToPath */
+/****************/
 
-static char path[1024] = "";
+typedef struct PathEntry PathEntry;
+struct PathEntry {
+    PathEntry *next;
+    char path[1];
+};
 
-void VM_setpath(const char *p)
+static PathEntry *path = NULL;
+static PathEntry **pNextPathEntry = &path;
+
+int VM_AddToPath(const char *p)
 {
-    strcpy(path, p);
+    PathEntry *entry = malloc(sizeof(PathEntry) + strlen(p));
+    if (!(entry))
+        return VMFALSE;
+    strcpy(entry->path, p);
+    *pNextPathEntry = entry;
+    pNextPathEntry = &entry->next;
+    entry->next = NULL;
+    return VMTRUE;
 }
-
-/***************/
-/* VM_fullpath */
-/***************/
 
 #if defined(WIN32)
 
 #include <windows.h>
 #include <psapi.h>
 
-/* VM_fullpath - get the full path to a file in the application directory */
-const char *VM_fullpath(const char *name)
+/* GetProgramPath - get the path relative the application directory */
+const char *GetProgramPath(void)
 {
     static char fullpath[1024];
     char *p;
     
-    /* first check for command line path */
-    if (path[0]) {
-        strcpy(fullpath, path);
-        strcat(fullpath, "\\");
-        strcat(fullpath, name);
-        return fullpath;
-    }
-    
-	/* first check for the XB_INC environment variable */
-    else if ((p = getenv("XB_INC")) != NULL) {
-        strcpy(fullpath, p);
-        strcat(fullpath, "\\");
-        strcat(fullpath, name);
-        return fullpath;
-    }
-
     /* get the full path to the executable */
     if (!GetModuleFileNameEx(GetCurrentProcess(), NULL, fullpath, sizeof(fullpath)))
         return NULL;
@@ -154,37 +148,68 @@ const char *VM_fullpath(const char *name)
         }
     }
 
-    /* generate the full path to the file */
+    /* generate the full path to the 'include' directory */
     strcat(fullpath, "\\include\\");
-    strcat(fullpath, name);
     return fullpath;
 }
 
+#endif
+
+/*************************/
+/* VM_AddEnvironmentPath */
+/*************************/
+
+#if defined(WIN32)
+#define SEP ';'
 #else
+#define SEP ':'
+#endif
+
+int VM_AddEnvironmentPath(void)
+{
+    char *p, *end;
+    
+    /* add path entries from the environment */
+    if ((p = getenv("XB_INC")) != NULL) {
+        while ((end = strchr(p, SEP)) != NULL) {
+            *end = '\0';
+            if (!VM_AddToPath(p))
+                return VMFALSE;
+            p = end + 1;
+        }
+        if (!VM_AddToPath(p))
+            return VMFALSE;
+    }
+    
+    /* add the path relative to the location of the executable */
+#if defined(WIN32)
+    if (!(p = GetProgramPath()))
+        if (!VM_AddToPath(p))
+            return VMFALSE;
+#endif
+
+    return VMTRUE;
+}
+
+/***************/
+/* VM_fullpath */
+/***************/
+
 
 #include <string.h>
 
-const char *VM_fullpath(const char *name)
+static const char *MakePath(PathEntry *entry, const char *name)
 {
     static char fullpath[1024];
-    char *p;
-    
-    /* first check for command line path */
-    if (path[0])
-        p = path;
-    
-    /* check for the XB_INC environment variable */
-    else if (!(p = getenv("XB_INC")))
-		return NULL;
-        
-    /* generate the full path to the file */
-    strcpy(fullpath, p);
+    strcpy(fullpath, entry->path);
+#if defined(WIN32)
+	strcat(fullpath, "\\");
+#else
 	strcat(fullpath, "/");
+#endif
 	strcat(fullpath, name);
 	return fullpath;
 }
-
-#endif
 
 /************/
 /* VM_fopen */
@@ -192,11 +217,20 @@ const char *VM_fullpath(const char *name)
 
 FILE *VM_fopen(const char *name, const char *mode)
 {
+    PathEntry *entry;
     FILE *fp;
+    
+#if 0
+    printf("path:");
+    for (entry = path; entry != NULL; entry = entry->next)
+        printf(" '%s'", entry->path);
+    printf("\n");
+#endif
+    
     if (!(fp = fopen(name, mode))) {
-        const char *path = VM_fullpath(name);
-        if (path)
-            fp = fopen(path, mode);
+        for (entry = path; entry != NULL; entry = entry->next)
+            if ((fp = fopen(MakePath(entry, name), mode)) != NULL)
+                break;
     }
     return fp;
 }

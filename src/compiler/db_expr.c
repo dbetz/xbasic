@@ -412,8 +412,6 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     if (c->function && (symbol = FindSymbol(&c->function->u.functionDefinition.locals, name)) != NULL) {
         node = NewParseTreeNode(c, NodeTypeLocalRef);
         node->type = symbol->type;
-        node->u.localRef.symbol = symbol;
-        node->u.localRef.fcn = code_local;
         node->u.localRef.offset = symbol->v.variable.offset;
     }
 
@@ -421,8 +419,6 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
     else if (c->functionType && (symbol = FindSymbol(&c->functionType->u.functionInfo.arguments, name)) != NULL) {
         node = NewParseTreeNode(c, NodeTypeLocalRef);
         node->type = symbol->type;
-        node->u.localRef.symbol = symbol;
-        node->u.localRef.fcn = code_local;
         node->u.localRef.offset = symbol->v.variable.offset;
     }
 
@@ -439,11 +435,13 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
                 node = NewParseTreeNode(c, NodeTypeFunctionLit);
                 node->type = symbol->type;
                 node->u.functionLit.symbol = symbol;
+                AddDependency(c, symbol);
                 break;
             case TYPE_ARRAY:
                 node = NewParseTreeNode(c, NodeTypeArrayLit);
                 node->type = ArrayTypeToPointerType(c, symbol->type);
                 node->u.arrayLit.symbol = symbol;
+                AddDependency(c, symbol);
                 break;
             case TYPE_INTEGER:
                 node = NewParseTreeNode(c, NodeTypeIntegerLit);
@@ -459,7 +457,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
             node = NewParseTreeNode(c, NodeTypeGlobalRef);
             node->type = symbol->type;
             node->u.globalRef.symbol = symbol;
-            node->u.globalRef.fcn = code_global;
+            AddDependency(c, symbol);
         }
     }
 
@@ -473,7 +471,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
             symbol = AddGlobalSymbol(c, name, SC_GLOBAL, &c->integerType, c->dataTarget);
             node->type = symbol->type;
             node->u.globalRef.symbol = symbol;
-            node->u.globalRef.fcn = code_global;
+            AddDependency(c, symbol);
             c->dataTarget->offset += WriteSection(c, c->dataTarget, (uint8_t *)&value, sizeof(VMVALUE));
         }
     }
@@ -730,17 +728,20 @@ void PrintNode(ParseTreeNode *node, int indent)
     case NodeTypeEndStatement:
         printf("Return\n");
         break;
+    case NodeTypeAsmStatement:
+        printf("Asm\n");
+        break;
     case NodeTypeGlobalRef:
         printf("GlobalRef: %s\n", node->u.globalRef.symbol->name);
         break;
     case NodeTypeLocalRef:
-        printf("LocalRef: %s\n", node->u.localRef.symbol->name);
+        printf("LocalRef: %d\n", node->u.localRef.offset);
         break;
     case NodeTypeFunctionLit:
-        printf("FunctionLit: %s\n", node->u.localRef.symbol->name);
+        printf("FunctionLit: %s\n", node->u.functionLit.symbol->name);
         break;
     case NodeTypeArrayLit:
-        printf("ArrayLit: %s\n", node->u.localRef.symbol->name);
+        printf("ArrayLit: %s\n", node->u.arrayLit.symbol->name);
         break;
     case NodeTypeStringLit:
 		printf("StringLit: '%s'\n",node->u.stringLit.string->value);

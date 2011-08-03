@@ -24,6 +24,8 @@
 typedef struct Type Type;
 typedef struct SymbolTable SymbolTable;
 typedef struct Symbol Symbol;
+typedef struct IncludedFile IncludedFile;
+typedef struct Dependency Dependency;
 typedef struct String String;
 typedef struct ParseTreeNode ParseTreeNode;
 typedef struct NodeListEntry NodeListEntry;
@@ -199,6 +201,7 @@ struct Type {
         struct {
             Type *returnType;
             SymbolTable arguments;
+            Dependency *dependencies;
         } functionInfo;
     } u;
 };
@@ -224,28 +227,39 @@ typedef int GetLineFcn(void *cookie, char *buf, int len);
 
 /* main file */
 typedef struct {
-    RewindFcn *rewind;              /* function to rewind to the start of the source program */
-    GetLineFcn *getLine;            /* function to get a line from the source program */
-    void *getLineCookie;            /* cookie for the rewind and getLine functions */
+    RewindFcn *rewind;          /* function to rewind to the start of the source program */
+    GetLineFcn *getLine;        /* function to get a line from the source program */
+    void *getLineCookie;        /* cookie for the rewind and getLine functions */
 } MainFile;
+
+/* current include file */
+typedef struct {
+    IncludedFile *file;
+    FILE *fp;
+} CurrentIncludeFile;
 
 /* parse file */
 typedef struct ParseFile ParseFile;
 struct ParseFile {
-    ParseFile *next;        /* next file in stack */
+    ParseFile *next;            /* next file in stack */
     union {
-        FILE *fp;           /* included input file pointer */
+        CurrentIncludeFile file;
         MainFile main;
     } u;
-    int lineNumber;         /* current line number */
-    char name[1];           /* file name */
+    int lineNumber;             /* current line number */
+    char name[1];               /* file name */
 };
 
 /* included file */
-typedef struct IncludedFile IncludedFile;
 struct IncludedFile {
-    IncludedFile *next;     /* next included file */
-    char name[1];           /* file name */
+    IncludedFile *next;         /* next included file */
+    char name[1];               /* file name */
+};
+
+/* dependency */
+struct Dependency {
+    Symbol *symbol;
+    Dependency *next;
 };
 
 /* compiler flags */
@@ -265,6 +279,7 @@ typedef struct {
     ParseFile mainFile;             /* scan - main input file */
     ParseFile *currentFile;         /* scan - current input file */
     IncludedFile *includedFiles;    /* scan - list of files that have already been included */
+    IncludedFile *currentInclude;   /* scan - file currently being included */
     Token savedToken;               /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
     char token[MAXTOKEN];           /* scan - current token string */
@@ -281,8 +296,11 @@ typedef struct {
     String *strings;                /* parse - string constants */
     Type *functionType;             /* parse - in a function definition */
     ParseTreeNode *function;        /* parse - function currently being compiled */
+    Dependency *dependencies;       /* parse - dependencies for the function currently being compiled */
+    Dependency **pNextDependency;   /* parse - place to store the next dependency */
     MainState mainState;            /* parse - state of main code processing */
     VMUVALUE mainCode;              /* parse - main code offset into text space */
+    Dependency *mainDependencies;   /* parse - main code dependencies */
     LocalFixup *symbolFixups;       /* parse - list of symbol fixups for the current code or data structure */
     Block blockBuf[10];             /* parse - stack of nested blocks */
     Block *bptr;                    /* parse - current block */
@@ -416,11 +434,8 @@ struct ParseTreeNode {
         } asmStatement;
         struct {
             Symbol *symbol;
-            GenFcn *fcn;
         } globalRef;
         struct {
-            Symbol *symbol;
-            GenFcn *fcn;
             int offset;
         } localRef;
         struct {
@@ -483,7 +498,6 @@ uint8_t *HeapAlloc(size_t size);
 /* db_compiler.c */
 ParseContext *InitCompiler(System *sys, BoardConfig *config, size_t codeBufSize);
 int Compile(ParseContext *c, char *name);
-void StartCode(ParseContext *c);
 void StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, char *argTypes, char *retType, int index);
 void AddRegister(ParseContext *c, char *name, VMUVALUE addr);
@@ -533,6 +547,7 @@ void ParseError(ParseContext *c, char *fmt, ...);
 
 /* db_symbols.c */
 void InitSymbolTable(SymbolTable *table);
+void AddDependency(ParseContext *c, Symbol *symbol);
 Symbol *AddGlobalSymbol(ParseContext *c, const char *name, StorageClass storageClass, Type *type, Section *section);
 Symbol *AddGlobalOffset(ParseContext *c, const char *name, StorageClass storageClass, Type *type, VMUVALUE offset);
 Symbol *AddGlobalConstantInteger(ParseContext *c, const char *name, VMVALUE value);

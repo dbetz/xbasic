@@ -58,6 +58,22 @@ Symbol *AddFormalArgument(ParseContext *c, SymbolTable *table, const char *name,
     return AddGlobal(c, table, name, SC_LOCAL, type, offset);
 }
 
+/* AddDependency - add a dependency on a global symbol to the current function */
+void AddDependency(ParseContext *c, Symbol *symbol)
+{
+    if (c->pass == 2) {
+        Dependency *d;
+        for (d = c->dependencies; d != NULL; d = d->next)
+            if (symbol == d->symbol)
+                return;
+        d = (Dependency *)GlobalAlloc(c, sizeof(Dependency));
+        d->symbol = symbol;
+        d->next = NULL;
+        *c->pNextDependency = d;
+        c->pNextDependency = &d->next;
+    }
+}
+
 /* AddGlobal - add a symbol to a global symbol table */
 static Symbol *AddGlobal(ParseContext *c, SymbolTable *table, const char *name, StorageClass storageClass, Type *type, VMUVALUE offset)
 {
@@ -145,7 +161,7 @@ void DumpSymbols(ParseContext *c, SymbolTable *table, char *tag)
             switch (sym->storageClass) {
             case SC_CONSTANT:
             case SC_GLOBAL:
-                if (sym->section)
+                if (value != UNDEF_VALUE && sym->section)
                     value += sym->section->base;
                 break;
             default:

@@ -15,6 +15,7 @@
 #include "db_vmdebug.h"
 
 /* local function prototypes */
+static void GenerateDependencies(ParseContext *c);
 static void ApplyLocalFixups(ParseContext *c, VMUVALUE base);
 static void DumpLocalFixups(ParseContext *c);
 static void UpdateReferences(ParseContext *c);
@@ -86,9 +87,6 @@ int Compile(ParseContext *c, char *name)
     /* initialize the code staging buffer */
     c->cptr = c->codeBuf;
     
-    /* no main function yet */
-    c->mainState = MAIN_NOT_DEFINED;
-
     /* initialize the string and label tables */
     c->strings = NULL;
 
@@ -120,9 +118,12 @@ int Compile(ParseContext *c, char *name)
     /* initialize scanner */
     c->inComment = VMFALSE;
     
-    /* do two passes over the source program */
-    for (c->pass = 1; c->pass <= 2; ++c->pass) {
+    /* do three passes over the source program */
+    for (c->pass = 1; c->pass <= 3; ++c->pass) {
         
+        /* no main function yet */
+        c->mainState = MAIN_NOT_DEFINED;
+
         /* rewind to the start of the source program */
         RewindInput(c);
     
@@ -133,6 +134,22 @@ int Compile(ParseContext *c, char *name)
                 ParseStatement(c, tkn);
         }
         
+        /* end the main function if it's in progress */
+        if (c->pass > 1) {
+            switch (c->mainState) {
+            case MAIN_IN_PROGRESS:
+                EndFunction(c);
+                break;
+            case MAIN_NOT_DEFINED:
+                ParseError(c, "no main code");
+                break;
+            }
+    
+            /* make a list of dependencies at the end of the second pass */
+            if (c->pass == 2)
+                GenerateDependencies(c);
+        }
+        
         /* clear the list of included files for the next pass */
         ClearIncludedFiles(c);
     }
@@ -140,16 +157,6 @@ int Compile(ParseContext *c, char *name)
     /* close the input file */
     CloseParseContext(c);
 
-    /* write the main code */
-    switch (c->mainState) {
-    case MAIN_IN_PROGRESS:
-		EndFunction(c);
-        break;
-    case MAIN_NOT_DEFINED:
-        ParseError(c, "no main code");
-        break;
-    }
-    
     /* update all global variable references */
     UpdateReferences(c);
 
@@ -176,14 +183,52 @@ int Compile(ParseContext *c, char *name)
     return BuildImage(c, name);
 }
 
-/* StartCode - start a function or method under construction */
-void StartCode(ParseContext *c)
+/* GenerateDependencies - generate a list of dependencies of the main function */
+static void GenerateDependencies(ParseContext *c)
 {
-    /* initialize */
-    c->symbolFixups = NULL;
+    Dependency *dependencies, **pNext, *d, *d2, *d3, *next;
+    
+    /* initialize the main dependency list */
+    dependencies = NULL;
+    pNext = &dependencies;
+    
+    /* add all of the main dependencies */
+    for (d = c->mainDependencies; d != NULL; d = next) {
+        next = d->next;
+        *pNext = d;
+        pNext = &d->next;
+        d->next = NULL;
+    }
+    
+    /* add all of the recursive dependencies */
+    for (d = dependencies; d != NULL; d = d->next) {
+        Symbol *sym = d->symbol;
+        if (sym->type->id == TYPE_FUNCTION) {
+            for (d2 = sym->type->u.functionInfo.dependencies; d2 != NULL; d2 = next) {
+                sym = d2->symbol;
+                next = d2->next;
+                for (d3 = dependencies; d3 != NULL; d3 = d3->next)
+                    if (sym == d3->symbol)
+                        break;
+                if (!d3) {
+                    *pNext = d2;
+                    pNext = &d2->next;
+                    d2->next = NULL;
+                }
+            }
+        }
+    }
+    
+    /* save the dependencies of the main function */
+    c->mainDependencies = dependencies;
 
-    /* reset to compile the next code */
-    c->cptr = c->codeBuf;
+    if (c->flags & COMPILER_DEBUG) {
+        if ((d = c->mainDependencies) != NULL) {
+            VM_printf("main dependencies:\n");
+            for (; d != NULL; d = d->next)
+                VM_printf("  %s\n", d->symbol->name);
+        }
+    }
 }
 
 /* StoreCode - store the function or method under construction */
@@ -191,25 +236,10 @@ void StoreCode(ParseContext *c)
 {
     int codeSize;
 
-    /* check for unterminated blocks */
-	switch (c->bptr->type) {
-    case BLOCK_IF:
-    case BLOCK_ELSE:
-		ParseError(c, "expecting END IF");
-    case BLOCK_FOR:
-		ParseError(c, "expecting NEXT");
-	case BLOCK_DO:
-		ParseError(c, "expecting LOOP");
-	default:
-		break;
-	}
-
-    /* make sure all referenced labels were defined */
-    CheckLabels(c);
+    /* initialize */
+    c->symbolFixups = NULL;
 
     /* generate code for the function */
-    if (c->flags & COMPILER_DEBUG) 
-        PrintNode(c->function, 0);
     Generate(c, c->function);
     
     /* store the function or main offset */
@@ -235,12 +265,12 @@ void StoreCode(ParseContext *c)
         DumpLabels(c);
         DumpLocalFixups(c);
     }
-
+    
     /* store the code */
     c->textTarget->offset += WriteSection(c, c->textTarget, c->codeBuf, codeSize);
 
-    /* empty the local heap */
-    c->nextLocal = c->heapTop;
+    /* reset to compile the next code */
+    c->cptr = c->codeBuf;
 }
 
 /* AddString - add a string to the string table */
