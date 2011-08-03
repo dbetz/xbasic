@@ -17,7 +17,7 @@ static void ParseDef(ParseContext *c);
 static void ParseConstantDef(ParseContext *c, char *name);
 static void ParseFunctionDef(ParseContext *c, char *name);
 static void ParseFunctionDef_pass1(ParseContext *c, char *name);
-static void ParseFunctionDef_pass2(ParseContext *c, char *name);
+static void ParseFunctionDef_pass23(ParseContext *c, char *name);
 static void ParseEndDef(ParseContext *c);
 static void ParseDim(ParseContext *c);
 static Type *ParseVariableDecl(ParseContext *c, char *name, VMUVALUE *pSize);
@@ -60,7 +60,8 @@ static VMVALUE ParseIntegerConstant(ParseContext *c);
 
 /*
     pass 1: handle definitions
-    pass 2: compile code
+    pass 2: collect dependencies
+    pass 3: compile code
 */
 
 /* ParseStatement - parse a statement */
@@ -88,7 +89,7 @@ again:
         ParseDim(c);
         break;
     default:
-        if (c->pass == 2) {
+        if (c->pass > 1) {
             if (!c->functionType) {
                 switch (c->mainState) {
                 case MAIN_NOT_DEFINED:
@@ -194,7 +195,7 @@ static void ParseInclude(ParseContext *c)
     FRequire(c, T_STRING);
     strcpy(name, c->token);
     FRequire(c, T_EOL);
-    if (!PushFile(c, name) && !PushFile(c, name))
+    if (!PushFile(c, name))
         ParseError(c, "include file not found: %s", name);
 }
 
@@ -281,7 +282,7 @@ static void ParseFunctionDef(ParseContext *c, char *name)
     if (c->pass == 1)
         ParseFunctionDef_pass1(c, name);
     else
-        ParseFunctionDef_pass2(c, name);
+        ParseFunctionDef_pass23(c, name);
 }
 
 /* ParseFunctionDef_pass1 - parse a 'DEF <name>' statement during pass 1 */
@@ -323,8 +324,8 @@ static void ParseFunctionDef_pass1(ParseContext *c, char *name)
     FRequire(c, T_EOL);
 }
 
-/* ParseFunctionDef_pass2 - parse a 'DEF <name>' statement during pass 2 */
-static void ParseFunctionDef_pass2(ParseContext *c, char *name)
+/* ParseFunctionDef_pass23 - parse a 'DEF <name>' statement during passes 2 and 3 */
+static void ParseFunctionDef_pass23(ParseContext *c, char *name)
 {
     Symbol *sym;
     sym = FindSymbol(&c->globals, name);
@@ -344,29 +345,93 @@ static void StartFunction(ParseContext *c, Symbol *sym)
     InitSymbolTable(&node->u.functionDefinition.locals);
     node->u.functionDefinition.labels = NULL;
     node->u.functionDefinition.localOffset = 0;
+    c->dependencies = NULL;
+    c->pNextDependency = &c->dependencies;
     
     /* setup to compile the function body */
     PushBlock(c, BLOCK_FUNCTION, node);
     c->bptr->pNextStatement = &node->u.functionDefinition.bodyStatements;
     c->functionType = node->type;
     c->function = node;
-    StartCode(c);
 }
 
 /* EndFunction - end the current or main function definition */
 void EndFunction(ParseContext *c)
 {
-    StoreCode(c);
+    Dependency *d;
+
+    /* check for unterminated blocks */
+	switch (c->bptr->type) {
+    case BLOCK_IF:
+    case BLOCK_ELSE:
+		ParseError(c, "expecting END IF");
+    case BLOCK_SELECT:
+    case BLOCK_CASE:
+		ParseError(c, "expecting END SELECT");
+    case BLOCK_FOR:
+		ParseError(c, "expecting NEXT");
+	case BLOCK_DO:
+		ParseError(c, "expecting LOOP");
+	default:
+		break;
+	}
+
+    /* make sure all referenced labels were defined */
+    CheckLabels(c);
+
+    /* store the dependencies on pass 2 */
+    if (c->pass == 2) {
+    
+        /* store dependencies */
+        if (c->functionType)
+            c->function->u.functionDefinition.symbol->type->u.functionInfo.dependencies = c->dependencies;
+        else
+            c->mainDependencies = c->dependencies;
+            
+        /* show the parse tree if requested */
+        if (c->flags & COMPILER_DEBUG) {
+            VM_putchar('\n');
+            PrintNode(c->function, 0);
+            if ((d = c->dependencies) != NULL) {
+                VM_printf("dependencies:\n");
+                for (; d != NULL; d = d->next)
+                    VM_printf("  %s\n", d->symbol->name);
+            }
+        }
+    }
+    
+    /* generate code on pass 3 */
+    else {
+    
+        /* handle named functions */
+        if (c->functionType) {
+            Symbol *sym = c->function->u.functionDefinition.symbol;
+            for (d = c->mainDependencies; d != NULL; d = d->next)
+                if (sym == d->symbol)
+                    break;
+            if (d)
+                StoreCode(c);
+        }
+        
+        /* always store the main function */
+        else
+            StoreCode(c);
+    }
+    
+    /* exit the function block */
     PopBlock(c);
     c->functionType = NULL;
     c->function = NULL;
+    
+    /* empty the local heap */
+    c->nextLocal = c->heapTop;
 }
 
 /* ParseEndDef - parse the 'END DEF' statement */
 static void ParseEndDef(ParseContext *c)
 {
     if (c->functionType) {
-        if (c->pass == 2)
+        if (c->pass > 1)
             EndFunction(c);
         c->functionType = NULL;
     }
@@ -413,7 +478,7 @@ static void ParseDim(ParseContext *c)
                 expr = NULL;
             }
                 
-            if (c->pass == 2) {
+            if (c->pass > 1) {
             
                 /* add the local symbol */
                 AddLocal(c, name, type, -F_SIZE - c->function->u.functionDefinition.localOffset - 1);
@@ -1385,7 +1450,8 @@ static ParseTreeNode *BuildHandlerFunctionCall(ParseContext *c, char *name, Pars
     functionNode = NewParseTreeNode(c, NodeTypeFunctionLit);
     functionNode->type = functionType;
     functionNode->u.functionLit.symbol = symbol;
-    
+    AddDependency(c, symbol);
+  
     callNode = NewParseTreeNode(c, NodeTypeFunctionCall);
 
     /* intialize the function call node */

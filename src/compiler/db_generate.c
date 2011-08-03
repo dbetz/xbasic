@@ -130,11 +130,11 @@ void code_expr(ParseContext *c, ParseTreeNode *expr, PVAL *pv)
         code_asm_statement(c, expr);
         break;
     case NodeTypeGlobalRef:
-        pv->fcn = expr->u.globalRef.fcn;
+        pv->fcn = code_global;
         pv->u.sym = expr->u.globalRef.symbol;
         break;
     case NodeTypeLocalRef:
-        pv->fcn = expr->u.localRef.fcn;
+        pv->fcn = code_local;
         pv->u.val = expr->u.localRef.offset;
         break;
     case NodeTypeFunctionLit:

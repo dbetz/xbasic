@@ -96,11 +96,12 @@ int PushFile(ParseContext *c, const char *name)
         ParseError(c, "insufficient memory");
     
     /* open the input file */
-    if (!(f->u.fp = VM_fopen(name, "r"))) {
+    if (!(f->u.file.fp = VM_fopen(name, "r"))) {
         free(f);
         return VMFALSE;
     }
-
+    f->u.file.file = inc;
+    
     /* initialize the parse context */
     strcpy(f->name, name);
     f->lineNumber = 0;
@@ -108,6 +109,7 @@ int PushFile(ParseContext *c, const char *name)
     /* push the file onto the input file stack */
     f->next = c->currentFile;
     c->currentFile = f;
+    c->currentInclude = inc;
     
     /* add this file to the list of already included files */
     if (!(inc = (IncludedFile *)malloc(sizeof(IncludedFile) + strlen(name))))
@@ -115,7 +117,7 @@ int PushFile(ParseContext *c, const char *name)
     strcpy(inc->name, name);
     inc->next = c->includedFiles;
     c->includedFiles = inc;
-    
+
     /* return successfully */
     return VMTRUE;
 }
@@ -129,6 +131,7 @@ void ClearIncludedFiles(ParseContext *c)
         free(f);
     }
     c->includedFiles = NULL;
+    c->currentInclude = NULL;
 }
 
 /* CloseParseContext - close a parse context */
@@ -139,12 +142,13 @@ void CloseParseContext(ParseContext *c)
     /* close all of the currently open files */
     for (f = c->currentFile; f != NULL && f != &c->mainFile; f = next) {
         next = f->next;
-        fclose(f->u.fp);
+        fclose(f->u.file.fp);
         free(f);
     }
     
     /* restore the input to the main file */
     c->currentFile = &c->mainFile;
+    c->currentInclude = NULL;
 }
 
 /* GetLine - get the next input line */
@@ -168,14 +172,19 @@ int GetLine(ParseContext *c)
         
         /* get a line from the current include file */
         else {
-            if (fgets(c->sys->lineBuf, sizeof(c->sys->lineBuf) - 1, f->u.fp))
+            if (fgets(c->sys->lineBuf, sizeof(c->sys->lineBuf) - 1, f->u.file.fp))
                 break;
         }
         
         /* pop the input file stack on end of file */
-        c->currentFile = f->next;
+        if ((c->currentFile = f->next) != NULL && c->currentFile != &c->mainFile)
+            c->currentInclude = c->currentFile->u.file.file;
+        else
+            c->currentInclude = NULL;
+            
+        /* close the file we just finished if it isn't the main file */
         if (f != &c->mainFile) {
-            fclose(f->u.fp);
+            fclose(f->u.file.fp);
             free(f);
         }
     }

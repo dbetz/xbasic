@@ -2,6 +2,7 @@ option stacksize=64
 
 include "print.bas"
 include "string.bas"
+include "propeller.bas"
 
 dim my_array(10) in "text" = { 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 }
 
@@ -12,12 +13,14 @@ dim greeting(32) as byte
 dim buf(20) as byte
 
 def show(array(), bytearray() as byte, size)
+  dim n
   for n = 0 to size - 1
     print n, array(n), bytearray(n)
   next n
 end def
 
 def fill(array(), bytearray() as byte, size)
+  dim n
   for n = 0 to size - 1
     array(n) = n
     bytearray(n) = size - n - 1
@@ -25,7 +28,7 @@ def fill(array(), bytearray() as byte, size)
 end def
 
 def dumpstr(str() as byte)
-  i = 0
+  dim i = 0
   do while str(i) <> 0
     print str(i)
     i = i + 1

@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
                     p = argv[i];
                 else
                     Usage();
-                VM_setpath(p);
+                VM_AddToPath(p);
                 break;
             default:
                 Usage();
@@ -121,6 +121,9 @@ int main(int argc, char *argv[])
             infile = argv[i];
         }
     }
+    
+    /* add the path from 'XB_INC' */
+    VM_AddEnvironmentPath();
     
     ParseConfigurationFile("xbasic.cfg");
 
