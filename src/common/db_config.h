@@ -58,9 +58,9 @@ MAXCODE		the size of the bytecode staging buffer used by the compiler
 #define WORD_SIZE_32
 #define FAR_DATA
 #define FLASH_SPACE		const
-#define RAMSIZE         (32 * 1024)
-#define DATSIZE         (8 * 1024)
-#define MAXCODE         (8 * 1024)
+#define RAMSIZE         (256 * 1024)
+#define DATSIZE         (64 * 1024)
+#define MAXCODE         (32 * 1024)
 #define NEED_STRCASECMP
 
 /* support for posix */
@@ -68,9 +68,9 @@ MAXCODE		the size of the bytecode staging buffer used by the compiler
 #define WORD_SIZE_32
 #define FAR_DATA
 #define FLASH_SPACE		const
-#define RAMSIZE         (128 * 1024)
-#define DATSIZE         (32 * 1024)
-#define MAXCODE         (16 * 1024)
+#define RAMSIZE         (256 * 1024)
+#define DATSIZE         (64 * 1024)
+#define MAXCODE         (32 * 1024)
 
 #endif
 

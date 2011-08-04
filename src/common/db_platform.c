@@ -191,11 +191,6 @@ int VM_AddEnvironmentPath(void)
     return VMTRUE;
 }
 
-/***************/
-/* VM_fullpath */
-/***************/
-
-
 #include <string.h>
 
 static const char *MakePath(PathEntry *entry, const char *name)
