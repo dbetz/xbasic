@@ -26,7 +26,7 @@ int StartImage(ParseContext *c, char *name)
             section->offset = dataOffset;
         }
         else {
-            char tmpname[50];
+            char tmpname[256]; // longer path name for GUI
             MakeTmpName(tmpname, name, section->name);
             if (!(section->fp = VM_CreateTmpFile(tmpname, "w+")))
                 return VMFALSE;

@@ -128,10 +128,16 @@ const char *GetProgramPath(void)
 {
     static char fullpath[1024];
     char *p;
-    
+
+#if defined(Q_OS_WIN32)
+    /* get the full path to the executable */
+    if (!GetModuleFileNameA(NULL, fullpath, sizeof(fullpath)))
+        return NULL;
+#else
     /* get the full path to the executable */
     if (!GetModuleFileNameEx(GetCurrentProcess(), NULL, fullpath, sizeof(fullpath)))
         return NULL;
+#endif
 
     /* remove the executable filename */
     if ((p = strrchr(fullpath, '\\')) != NULL)
