@@ -1,11 +1,14 @@
-REM
+REM ===============================================
 REM xbasic loop1k.bas test performance:
 REM
-REM    15ms @ 80MHz from HUB
-REM    21ms @ 96MHz from C3 Flash
+REM    14ms @ 80MHz from HUB
+REM    23ms @ 80MHz from C3 Flash (1.64*HUB)
+REM    19ms @ 80MHz from SSF Flash (1.36*HUB)
 REM    12ms @ 96MHz from HUB
-REM    17ms @ 96MHz from SpinSocket-Flash
+REM    16ms @ 96MHz from SSF Flash (1.33*HUB)
 REM
+REM ===============================================
+
 include "propeller.bas"
 include "print.bas"
 
@@ -25,6 +28,7 @@ end def
 
 REM Run loop test for 1000 iterations
 REM
+waitcnt(clkfreq+cnt) // wait for terminal startup
 test(1000)
 do
 loop
