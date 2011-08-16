@@ -2,9 +2,10 @@ REM ===============================================
 REM basic fibo test performance
 REM
 REM    6482 ms @ 80MHz from HUB
-REM    8642 ms @ 96MHz from C3 Flash
+REM    8913 ms @ 80MHz from C3 Flash (1.37*HUB)
+REM    8643 ms @ 80MHz from SSF Flash (1.33*HUB)
 REM    5401 ms @ 96MHz from HUB
-REM    7202 ms @ 96MHz from SpinSocket-Flash
+REM    7202 ms @ 96MHz from SSF Flash (1.33*HUB)
 REM
 REM ===============================================
 
