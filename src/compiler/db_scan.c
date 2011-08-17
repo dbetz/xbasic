@@ -762,7 +762,7 @@ void UngetC(ParseContext *c)
 /* ParseError - report a parsing error */
 void ParseError(ParseContext *c, char *fmt, ...)
 {
-    ParseFile *f = c->currentFile;
+    ParseFile *f;
     va_list ap;
 
     /* print the error message */
@@ -773,12 +773,14 @@ void ParseError(ParseContext *c, char *fmt, ...)
     va_end(ap);
 
     /* show the context */
-    if (!f || f == &c->mainFile)
-        VM_printf("  line %d\n", c->currentFile->lineNumber);
-    else
-        VM_printf("  file '%s', line %d\n", f->name, f->lineNumber);
-    VM_printf("    %s\n", c->sys->lineBuf);
-    VM_printf("    %*s\n", c->tokenOffset, "^");
+    if ((f = c->currentFile) != NULL) {
+        if (f == &c->mainFile)
+            VM_printf("  line %d\n", c->currentFile->lineNumber);
+        else
+            VM_printf("  file '%s', line %d\n", f->name, f->lineNumber);
+        VM_printf("    %s\n", c->sys->lineBuf);
+        VM_printf("    %*s\n", c->tokenOffset, "^");
+    }
 
 	/* exit until we fix the compiler so it can recover from parse errors */
     longjmp(c->sys->errorTarget, 1);
