@@ -681,6 +681,10 @@ void MainWindow::enumeratePorts()
 #if defined(Q_WS_WIN32)
         name = ports.at(i).portName;
         cbPort->addItem(name);
+#elif defined(Q_WS_MAC)
+        name = ports.at(i).portName;
+        if(name.indexOf("usbserial") > -1)
+            cbPort->addItem(name);
 #else
         name = "/"+ports.at(i).physName;
         cbPort->addItem(name);
