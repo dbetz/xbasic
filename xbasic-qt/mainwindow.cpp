@@ -315,7 +315,7 @@ void MainWindow::hardware()
 
 void MainWindow::properties()
 {
-    propDialog->show();
+    propDialog->showProperties();
 }
 void MainWindow::propertiesAccepted()
 {
@@ -782,7 +782,7 @@ void MainWindow::setupFileMenu()
     // fileMenu->addAction(QIcon(":/images/print.png"), tr("Print"), this, SLOT(printFile()), QKeySequence::Print);
     // fileMenu->addAction(QIcon(":/images/zip.png"), tr("Archive"), this, SLOT(zipFile()), 0);
 
-    fileMenu->addAction(tr("E&xit"), qApp, SLOT(quit()),
+    fileMenu->addAction(QIcon(":/images/exit.png"), tr("E&xit"), qApp, SLOT(quit()),
                         QKeySequence::Quit);
 
     QMenu *projMenu = new QMenu(tr("&Project"), this);

@@ -11,15 +11,21 @@
 # Think about a better way to specify the project.
 # Today it just builds whatever the main file specifies.
 #
+# Test using array.bas ... David says some output is missing.
+#
 # 1 add file change save for exit dialog
-# 2 add font resize
+# 2 make xbcom-qt build all from scratch
 # 3 documentation: add xBasic help
 #
+# - add font resize
+# - add comment editor to hardware dialog
+# - add tools for spin compiler and bin2 blah
 # - documentation: describe purpose of classes methods
 # - clean up mainwindow class
 # - user options should have way to change syntax highlighting?
 # - add compiler to gui?
 # - set default compiler properties for windows install?
+#   make the compiler and include path properties default settings.
 #
 #-------------------------------------------------
 

@@ -60,7 +60,9 @@ void Properties::browseCompiler()
     QString fileName = QFileDialog::getOpenFileName(this,
             tr("Select xBasic Compiler"), "", "xBasic Compiler (*)");
     QString s = QDir::fromNativeSeparators(fileName);
-    leditCompiler->setText(s);
+    compilerstr = leditCompiler->text();
+    if(s.length() > 0)
+        leditCompiler->setText(s);
     qDebug() << "browseCompiler" << s;
 }
 
@@ -69,6 +71,8 @@ void Properties::browseIncludes()
     QString pathName = QFileDialog::getExistingDirectory(this,
             tr("Select xBasic Include Path"), "");
     QString s = QDir::fromNativeSeparators(pathName);
+    if(s.length() == 0)
+        return;
     if(s.indexOf('/') > -1) {
         if(s.mid(s.length()-1) != "/")
             s += "/";
@@ -92,5 +96,14 @@ void Properties::accept()
 
 void Properties::reject()
 {
+    leditCompiler->setText(compilerstr);
+    leditIncludes->setText(includesstr);
     done(QDialog::Rejected);
+}
+
+void Properties::showProperties()
+{
+    compilerstr = leditCompiler->text();
+    includesstr = leditIncludes->text();
+    this->show();
 }
