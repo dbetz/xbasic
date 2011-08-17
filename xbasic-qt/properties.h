@@ -29,10 +29,13 @@ public slots:
     void browseIncludes();
     void accept();
     void reject();
+    void showProperties();
 
 private:
-    QLineEdit *leditCompiler;
-    QLineEdit *leditIncludes;
+    QLineEdit   *leditCompiler;
+    QLineEdit   *leditIncludes;
+    QString     compilerstr;
+    QString     includesstr;
 };
 
 #endif // PROPERTIES_H
