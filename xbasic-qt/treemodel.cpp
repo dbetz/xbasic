@@ -58,6 +58,7 @@ TreeModel::TreeModel(const QString &shortFileName, QObject *parent)
     QList<QVariant> rootData;
     rootData << shortFileName;
     rootItem = new TreeItem(rootData);
+    treeName = shortFileName;
     //setupModelData(data.split(QString("\n")), rootItem);
 }
 //! [0]
@@ -68,6 +69,11 @@ TreeModel::~TreeModel()
     delete rootItem;
 }
 //! [1]
+
+QString TreeModel::getTreeName()
+{
+    return treeName;
+}
 
 //! [2]
 int TreeModel::columnCount(const QModelIndex &parent) const
@@ -234,6 +240,61 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
 /*
  * this should be part of a child class, but I'm lazy right now
  */
+void TreeModel::xBasicIncludes(QString &filePath, QString &incPath, QString &separator, QString &text, bool root)
+{
+    QString inc, cap, s;
+    QStringList st = text.split('\n');
+    QRegExp rx("(include) ([^\n]*)");
+
+    rx.setCaseSensitivity(Qt::CaseInsensitive);
+
+    int len = st.length();
+    for(int n = 0; n < len; n++)
+    {
+        s = st.at(n);
+        int gotit = rx.indexIn(s);
+        if(gotit > -1) {
+            QList<QVariant> clist;
+            inc = rx.cap(1);
+            cap = rx.cap(2);
+            if(cap != "") {
+                cap = cap.remove("\"");
+                cap = cap.trimmed();
+            }
+            clist << cap;
+            rootItem->appendChild(new TreeItem(clist, rootItem));
+
+            QString newPath = filePath.mid(0,(filePath.lastIndexOf(separator)+1))+cap;
+            QString newInc = incPath+cap;
+            if(QFile::exists(newPath) == true)
+            {
+                QString filename = newPath;
+                QFile myfile(filename);
+                if (myfile.open(QFile::ReadOnly | QFile::Text))
+                {
+                    text = myfile.readAll();
+                    myfile.close();
+                    xBasicIncludes(filename, incPath, separator, text);
+                }
+            }
+            else if(QFile::exists(newInc) == true)
+            {
+                QString filename = newInc;
+                QFile myfile(filename);
+                if (myfile.open(QFile::ReadOnly | QFile::Text))
+                {
+                    text = myfile.readAll();
+                    myfile.close();
+                    xBasicIncludes(filename, incPath, separator, text);
+                }
+            }
+        }
+    }
+}
+
+/*
+ * this should be part of a child class, but I'm lazy right now
+ */
 void TreeModel::xBasicIncludes(QString &text)
 {
     QString inc, cap, s;
@@ -252,6 +313,7 @@ void TreeModel::xBasicIncludes(QString &text)
             cap = rx.cap(2);
             if(cap != "") {
                 cap = cap.remove("\"");
+                cap = cap.trimmed();
             }
             clist << cap;
             rootItem->appendChild(new TreeItem(clist, rootItem));
@@ -294,6 +356,7 @@ void TreeModel::addFileReferences(QString &filePath, QString &incPath, QString &
             cap = rx.cap(2);
             if(cap != "") {
                 cap = cap.remove("\"");
+                cap = cap.trimmed();
             }
             clist << cap;
             rootItem->appendChild(new TreeItem(clist, rootItem));
@@ -307,6 +370,7 @@ void TreeModel::addFileReferences(QString &filePath, QString &incPath, QString &
                 if (myfile.open(QFile::ReadOnly | QFile::Text))
                 {
                     text = myfile.readAll();
+                    myfile.close();
                     addFileReferences(filename, incPath, separator, text);
                 }
             }
@@ -317,6 +381,7 @@ void TreeModel::addFileReferences(QString &filePath, QString &incPath, QString &
                 if (myfile.open(QFile::ReadOnly | QFile::Text))
                 {
                     text = myfile.readAll();
+                    myfile.close();
                     addFileReferences(filename, incPath, separator, text);
                 }
             }
