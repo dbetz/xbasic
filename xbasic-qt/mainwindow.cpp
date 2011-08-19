@@ -92,6 +92,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         if(lastfilev.canConvert(QVariant::String)) {
             QString fileName = lastfilev.toString();
             openFileName(fileName);
+            setProject(); // last file is always first project
         }
     }
 
@@ -178,9 +179,52 @@ void MainWindow::getApplicationSettings()
     }
 }
 
+void MainWindow::exitSave()
+{
+    bool saveAll = false;
+    QMessageBox mbox(QMessageBox::Question, "Save File?", "",
+                     QMessageBox::Discard | QMessageBox::Save | QMessageBox::SaveAll, this);
+
+    for(int tab = editorTabs->count()-1; tab > -1; tab--)
+    {
+        QString tabName = editorTabs->tabText(tab);
+        if(tabName.at(tabName.length()-1) == '*')
+        {
+            mbox.setInformativeText(tr("Save File: ") + tabName.mid(0,tabName.indexOf(" *")) + tr(" ?"));
+            if(saveAll)
+            {
+                saveFileByTabIndex(tab);
+            }
+            else
+            {
+                int ret = mbox.exec();
+                switch (ret) {
+                    case QMessageBox::Discard:
+                        // Don't Save was clicked
+                        return;
+                        break;
+                    case QMessageBox::Save:
+                        // Save was clicked
+                        saveFileByTabIndex(tab);
+                        break;
+                    case QMessageBox::SaveAll:
+                        // save all was clicked
+                        saveAll = true;
+                        break;
+                    default:
+                        // should never be reached
+                        break;
+                }
+            }
+        }
+    }
+}
+
 void MainWindow::closeEvent(QCloseEvent *event)
 {
     portListener->close();
+
+    exitSave(); // find
 
     QString filestr = editorTabs->tabToolTip(editorTabs->currentIndex());
     QString boardstr = cbBoard->itemText(cbBoard->currentIndex());
@@ -257,6 +301,23 @@ void MainWindow::saveFile(const QString &path)
     }
 }
 
+void MainWindow::saveFileByTabIndex(int tab)
+{
+    try {
+        QString fileName = editorTabs->tabToolTip(tab);
+        QString data = editors->at(tab)->toPlainText();
+
+        if (!fileName.isEmpty()) {
+            QFile file(fileName);
+            if (file.open(QFile::WriteOnly)) {
+                file.write(data.toAscii());
+                file.close();
+            }
+        }
+    } catch(...) {
+    }
+}
+
 void MainWindow::saveAsFile(const QString &path)
 {
     try {
@@ -271,7 +332,6 @@ void MainWindow::saveAsFile(const QString &path)
                 tr("Save As File"), "", "xBasic Files (*.bas)");
 
         this->editorTabs->setTabText(n,shortFileName(fileName));
-        updateProjectTree(fileName,data);
         editorTabs->setTabToolTip(n,fileName);
 
         if (!fileName.isEmpty()) {
@@ -282,6 +342,33 @@ void MainWindow::saveAsFile(const QString &path)
             }
         }
     } catch(...) {
+    }
+}
+
+void MainWindow::fileChanged()
+{
+    if(fileChangeDisable)
+        return;
+    int index = editorTabs->currentIndex();
+    QString name = editorTabs->tabText(index);
+    QString fileName = editorTabs->tabToolTip(index);
+    if(!QFile::exists(fileName))
+        return;
+    QFile file(fileName);
+    if(file.open(QFile::ReadOnly))
+    {
+        QString cur = editors->at(index)->toPlainText();
+        QString text = file.readAll();
+        file.close();
+        if(text == cur) {
+            if(name.at(name.length()-1) == '*')
+                editorTabs->setTabText(index, this->shortFileName(fileName));
+            return;
+        }
+    }
+    if(name.at(name.length()-1) != '*') {
+        name += tr(" *");
+        editorTabs->setTabText(index, name);
     }
 }
 
@@ -305,6 +392,19 @@ void MainWindow::zipFile(const QString &path)
     if (!fileName.isEmpty()) {
     }
     */
+}
+
+void MainWindow::setProject()
+{
+    int index = editorTabs->currentIndex();
+    QString fileName = editorTabs->tabToolTip(index);
+    QString text = editors->at(index)->toPlainText();
+
+    if(fileName.length() != 0 && text.length() != 0)
+    {
+        updateProjectTree(fileName,text);
+        updateReferenceTree(fileName,text);
+    }
 }
 
 void MainWindow::hardware()
@@ -338,6 +438,42 @@ void MainWindow::setCurrentPort(int index)
     }
 }
 
+void MainWindow::checkAndSaveFiles()
+{
+    QString title = projectModel->getTreeName();
+    QString modTitle = title + " *";
+    for(int tab = editorTabs->count()-1; tab > -1; tab--)
+    {
+        QString tabName = editorTabs->tabText(tab);
+        if(tabName == modTitle)
+        {
+            saveFileByTabIndex(tab);
+            editorTabs->setTabText(tab,title);
+        }
+    }
+
+    //TreeItem *item = static_cast<TreeItem*>(root.internalPointer());
+    int len = projectModel->rowCount();
+    for(int n = 0; n < len; n++)
+    {
+        QModelIndex root = projectModel->index(n,0);
+        QVariant vs = projectModel->data(root, Qt::DisplayRole);
+        if(!vs.canConvert(QVariant::String))
+            continue;
+        QString name = vs.toString();
+        QString modName = name + " *";
+        for(int tab = editorTabs->count()-1; tab > -1; tab--)
+        {
+            QString tabName = editorTabs->tabText(tab);
+            if(tabName == modName)
+            {
+                saveFileByTabIndex(tab);
+                editorTabs->setTabText(tab,name);
+            }
+        }
+    }
+}
+
 int  MainWindow::checkCompilerInfo()
 {
     QMessageBox mbox(QMessageBox::Critical,tr("Build Error"),"",QMessageBox::Ok);
@@ -356,7 +492,9 @@ int  MainWindow::checkCompilerInfo()
 
 QStringList MainWindow::getCompilerParameters(QString copts)
 {
-    QString srcpath = this->editorTabs->tabToolTip(this->editorTabs->currentIndex());
+    // use the projectFile instead of the current tab file
+    QString srcpath = projectFile;
+    //QString srcpath = this->editorTabs->tabToolTip(this->editorTabs->currentIndex());
     srcpath = QDir::fromNativeSeparators(srcpath);
     srcpath = srcpath.mid(0,srcpath.lastIndexOf(xBasicSeparator)+1);
 
@@ -372,7 +510,7 @@ QStringList MainWindow::getCompilerParameters(QString copts)
     args.append(xBasicIncludes);
     args.append(tr("-I"));
     args.append(srcpath);
-    args.append(this->editorTabs->tabToolTip(this->editorTabs->currentIndex()));
+    args.append(projectFile);
     args.append(copts);
 
     qDebug() << args;
@@ -381,6 +519,13 @@ QStringList MainWindow::getCompilerParameters(QString copts)
 
 int  MainWindow::runCompiler(QString copts)
 {
+    if(projectFile.isNull()) {
+        QMessageBox mbox(QMessageBox::Critical, "Error No Project",
+            "Please select a tab and press F4 to set main project file.", QMessageBox::Ok);
+        mbox.exec();
+        return -1;
+    }
+
     getApplicationSettings();
     if(checkCompilerInfo()) {
         return -1;
@@ -390,6 +535,8 @@ int  MainWindow::runCompiler(QString copts)
 
     btnConnected->setChecked(false);
     connectButton();            // disconnect uart before use
+
+    checkAndSaveFiles();
 
     QMessageBox mbox;
     mbox.setStandardButtons(QMessageBox::Ok);
@@ -602,6 +749,7 @@ void MainWindow::closeTab(int index)
 
 void MainWindow::changeTab(int index)
 {
+    /*
     QString fileName = editorTabs->tabToolTip(index);
     QString text = editors->at(index)->toPlainText();
 
@@ -610,6 +758,7 @@ void MainWindow::changeTab(int index)
         updateProjectTree(fileName,text);
         updateReferenceTree(fileName,text);
     }
+    */
 }
 
 void MainWindow::addToolButton(QToolBar *bar, QToolButton *btn, QString imgfile)
@@ -622,14 +771,16 @@ void MainWindow::addToolButton(QToolBar *bar, QToolButton *btn, QString imgfile)
     bar->addWidget(btn);
 }
 
-void MainWindow::updateProjectTree(QString &fileName, QString &text)
+void MainWindow::updateProjectTree(QString fileName, QString text)
 {
+    projectFile = fileName;
     QString s = this->shortFileName(fileName);
     basicPath = fileName.mid(0,fileName.lastIndexOf('/')+1);
 
     if(projectModel != NULL) delete projectModel;
     projectModel = new TreeModel(s, this);
-    projectModel->xBasicIncludes(text);
+    projectModel->xBasicIncludes(fileName, this->xBasicIncludes, this->xBasicSeparator, text, true);
+    // projectModel->xBasicIncludes(text);
 
     projectTree->setWindowTitle(s);
     projectTree->setModel(projectModel);
@@ -637,29 +788,28 @@ void MainWindow::updateProjectTree(QString &fileName, QString &text)
 
 }
 
-void MainWindow::updateReferenceTree(QString &fileName, QString &text)
+void MainWindow::updateReferenceTree(QString fileName, QString text)
 {
     QString s = this->shortFileName(fileName);
     basicPath = fileName.mid(0,fileName.lastIndexOf('/')+1);
 
     if(referenceModel != NULL) delete referenceModel;
     referenceModel = new TreeModel(s, this);
-    referenceModel->addFileReferences(fileName,this->xBasicIncludes, this->xBasicSeparator, text, true);
+    referenceModel->addFileReferences(fileName, xBasicIncludes, xBasicSeparator, text, true);
 
     referenceTree->setWindowTitle(s);
     referenceTree->setModel(referenceModel);
     referenceTree->show();
-
 }
 
-void MainWindow::setEditorTab(int num, QString &shortName, QString &fileName, QString &text)
+void MainWindow::setEditorTab(int num, QString shortName, QString fileName, QString text)
 {
     QPlainTextEdit *editor = editors->at(num);
+    fileChangeDisable = true;
     editor->setPlainText(text);
+    fileChangeDisable = false;
     editorTabs->setTabText(num,shortName);
     editorTabs->setTabToolTip(num,fileName);
-    updateProjectTree(fileName,text);
-    updateReferenceTree(fileName,text);
     editorTabs->setCurrentIndex(num);
 }
 
@@ -705,7 +855,7 @@ void MainWindow::connectButton()
     }
 }
 
-QString MainWindow::shortFileName(QString &fileName)
+QString MainWindow::shortFileName(QString fileName)
 {
     return fileName.mid(fileName.lastIndexOf(xBasicSeparator)+1);
 }
@@ -746,7 +896,6 @@ void MainWindow::initBoardTypes()
     }
 }
 
-
 void MainWindow::setupEditor()
 {
     //editor->clear();
@@ -757,7 +906,7 @@ void MainWindow::setupEditor()
 
     QPlainTextEdit *editor = new QPlainTextEdit;
     editor->setFont(font);
-
+    connect(editor,SIGNAL(textChanged()),this,SLOT(fileChanged()));
     highlighter = new Highlighter(editor->document());
     editors->append(editor);
 }
@@ -788,8 +937,9 @@ void MainWindow::setupFileMenu()
     QMenu *projMenu = new QMenu(tr("&Project"), this);
     menuBar()->addMenu(projMenu);
 
-    projMenu->addAction(QIcon(":/images/hardware.png"), tr("Hardware"), this, SLOT(hardware()), Qt::Key_F6);
+    projMenu->addAction(QIcon(":/images/treeproject.png"), tr("Set Project"), this, SLOT(setProject()), Qt::Key_F4);
     projMenu->addAction(QIcon(":/images/properties.png"), tr("Properties"), this, SLOT(properties()), Qt::Key_F5);
+    projMenu->addAction(QIcon(":/images/hardware.png"), tr("Hardware"), this, SLOT(hardware()), Qt::Key_F6);
 
     QMenu *debugMenu = new QMenu(tr("&Debug"), this);
     menuBar()->addMenu(debugMenu);
@@ -815,6 +965,7 @@ void MainWindow::setupProjectTools(QSplitter *vsplit)
     projectTree->setMaximumHeight(200);
     projectTree->setMaximumWidth(250);
     connect(projectTree,SIGNAL(clicked(QModelIndex)),this,SLOT(projectTreeClicked(QModelIndex)));
+    projectTree->setToolTip(tr("Current Project"));
     leftSplit->addWidget(projectTree);
 
     /* project reference tree */
@@ -824,6 +975,7 @@ void MainWindow::setupProjectTools(QSplitter *vsplit)
     QFont font = referenceTree->font();
     font.setItalic(true);   // pretty and matches def name font
     referenceTree->setFont(font);
+    referenceTree->setToolTip(tr("Project References"));
     connect(referenceTree,SIGNAL(clicked(QModelIndex)),this,SLOT(referenceTreeClicked(QModelIndex)));
     leftSplit->addWidget(referenceTree);
 
@@ -871,15 +1023,21 @@ void MainWindow::setupToolBars()
     //btnFileZip->setToolTip(tr("Archive"));
 
     propToolBar = addToolBar(tr("Properties"));
+
+    QToolButton *btnProjectApp = new QToolButton(this);
+    addToolButton(propToolBar, btnProjectApp, QString(":/images/treeproject.png"));
+    connect(btnProjectApp,SIGNAL(clicked()),this,SLOT(setProject()));
+    btnProjectApp->setToolTip(tr("Set Project File"));
+
+    QToolButton *btnProjectProperties = new QToolButton(this);
+    addToolButton(propToolBar, btnProjectProperties, QString(":/images/properties.png"));
+    connect(btnProjectProperties,SIGNAL(clicked()),this,SLOT(properties()));
+    btnProjectProperties->setToolTip(tr("Properties"));
+
     QToolButton *btnProjectBoard = new QToolButton(this);
     addToolButton(propToolBar, btnProjectBoard, QString(":/images/hardware.png"));
     connect(btnProjectBoard,SIGNAL(clicked()),this,SLOT(hardware()));
     btnProjectBoard->setToolTip(tr("Board Config"));
-    QToolButton *btnProjectProperties = new QToolButton(this);
-    addToolButton(propToolBar, btnProjectProperties, QString(":/images/properties.png"));
-    connect(btnProjectProperties,SIGNAL(clicked()),this,SLOT(properties()));
-
-    btnProjectProperties->setToolTip(tr("Properties"));
 
     debugToolBar = addToolBar(tr("Debug"));
     QToolButton *btnDebugDebugTerm = new QToolButton(this);

@@ -77,6 +77,7 @@ public slots:
     void newFile();
     void openFile(const QString &path = QString());
     void saveFile(const QString &path = QString());
+    void saveFileByTabIndex(int tab);
     void saveAsFile(const QString &path = QString());
     void printFile(const QString &path = QString());    // not implemented
     void zipFile(const QString &path = QString());      // not implemented
@@ -90,7 +91,8 @@ public slots:
     void setCurrentPort(int index);
     void connectButton();
     void terminalClosed();
-    void hardware();    // not implemented
+    void setProject();
+    void hardware();
     void properties();
     void propertiesAccepted();
     void programBuild();
@@ -101,26 +103,29 @@ public slots:
     void compilerFinished(int exitCode, QProcess::ExitStatus status);
     void closeEvent(QCloseEvent *event);
 
+    void fileChanged();
     void keyHandler(QKeyEvent* event);
     void enumeratePorts();
     void initBoardTypes();
 
 private:
+    void exitSave();
     void getApplicationSettings();
     int  checkCompilerInfo();
     QStringList getCompilerParameters(QString compilerOptions);
     int  runCompiler(QString compilerOptions);
     void openFileName(QString fileName);
+    void checkAndSaveFiles();
     void setupEditor();
     void setupFileMenu();
     void setupHelpMenu();
     void setupToolBars();
     void setupProjectTools(QSplitter *vsplit);
     void addToolButton(QToolBar *bar, QToolButton *btn, QString imgfile);
-    void updateProjectTree(QString &fileName, QString &text);
-    void updateReferenceTree(QString &fileName, QString &text);
-    void setEditorTab(int num, QString &shortName, QString &fileName, QString &text);
-    QString shortFileName(QString &fileName);
+    void updateProjectTree(QString fileName, QString text);
+    void updateReferenceTree(QString fileName, QString text);
+    void setEditorTab(int num, QString shortName, QString fileName, QString text);
+    QString shortFileName(QString fileName);
 
     QSettings   *settings;
     QString     xBasicCompiler;
@@ -140,7 +145,9 @@ private:
 
     QTabWidget  *editorTabs;
     QVector<QPlainTextEdit*> *editors;
+    bool        fileChangeDisable;
 
+    QString     projectFile;
     TreeModel   *projectModel;
     QTreeView   *projectTree;
     TreeModel   *referenceModel;
@@ -152,7 +159,7 @@ private:
     QComboBox   *cbBoard;
     QComboBox   *cbPort;
     QToolButton *btnConnected;
-    Console   *termEditor;
+    Console     *termEditor;
     PortListener *portListener;
     Terminal    *term;
     int         termXpos;

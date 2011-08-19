@@ -56,6 +56,7 @@ public:
     TreeModel(const QString &name, QObject *parent = 0);
     ~TreeModel();
 
+    QString     getTreeName();
     QVariant data(const QModelIndex &index, int role) const;
     Qt::ItemFlags flags(const QModelIndex &index) const;
     QVariant headerData(int section, Qt::Orientation orientation,
@@ -69,12 +70,14 @@ public:
     QString file(const QModelIndex &index) const;
 
     void xBasicIncludes(QString &text);
+    void xBasicIncludes(QString &filePath, QString &incPath, QString &separator, QString &text, bool root = false);
     void addFileReferences(QString &filePath, QString &incPath, QString &separator, QString &text, bool root = false);
 
 private:
     void setupModelData(const QStringList &lines, TreeItem *parent);
 
     TreeItem *rootItem;
+    QString treeName;
 };
 //! [0]
 

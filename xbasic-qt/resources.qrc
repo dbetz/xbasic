@@ -19,5 +19,7 @@
         <file>images/helphint.png</file>
         <file>images/helpsymbol.png</file>
         <file>images/exit.png</file>
+        <file>images/project.png</file>
+        <file>images/treeproject.png</file>
     </qresource>
 </RCC>
