@@ -8,15 +8,18 @@
 #define __DB_COMPILER_H__
 
 #include <stdio.h>
-#include "db_system.h"
+#include <setjmp.h>
 #include "db_config.h"
 #include "db_image.h"
+#include "db_system.h"
+#include "xb_api.h"
 
 #ifdef WIN32
 #define strcasecmp  _stricmp
 #endif
 
 /* program limits */
+#define MAXLINE             128
 #define MAXTOKEN            32
 #define DEFAULT_STACK_SIZE  (64 * sizeof(VMVALUE))
 
@@ -235,7 +238,7 @@ typedef struct {
 /* current include file */
 typedef struct {
     IncludedFile *file;
-    FILE *fp;
+    void *fp;
 } CurrentIncludeFile;
 
 /* parse file */
@@ -247,7 +250,6 @@ struct ParseFile {
         MainFile main;
     } u;
     int lineNumber;             /* current line number */
-    char name[1];               /* file name */
 };
 
 /* included file */
@@ -262,24 +264,18 @@ struct Dependency {
     Dependency *next;
 };
 
-/* compiler flags */
-#define COMPILER_DEBUG  (1 << 0)
-#define COMPILER_INFO   (1 << 1)
-
 /* parse context */
 typedef struct {
+    jmp_buf errorTarget;            /* error target */
     System *sys;                    /* system interface */
     BoardConfig *config;            /* board configuration */
     int flags;                      /* compiler flags */
-    uint8_t *nextGlobal;            /* next global heap space location */
-    uint8_t *nextLocal;             /* next local heap space location */
-    uint8_t *heapTop;               /* top of the heap */
-    size_t heapSize;                /* size of heap space in bytes */
-    size_t maxHeapUsed;             /* maximum amount of heap space allocated so far */
     ParseFile mainFile;             /* scan - main input file */
     ParseFile *currentFile;         /* scan - current input file */
     IncludedFile *includedFiles;    /* scan - list of files that have already been included */
     IncludedFile *currentInclude;   /* scan - file currently being included */
+    char lineBuf[MAXLINE];          /* scan - line buffer */
+    char *linePtr;                  /* scan - pointer to the current character */
     Token savedToken;               /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
     char token[MAXTOKEN];           /* scan - current token string */
@@ -497,15 +493,14 @@ uint8_t *HeapAlloc(size_t size);
 
 /* db_compiler.c */
 ParseContext *InitCompiler(System *sys, BoardConfig *config, size_t codeBufSize);
-int Compile(ParseContext *c, char *name);
+int Compile(ParseContext *c, const char *name);
 void StoreCode(ParseContext *c);
 void AddIntrinsic(ParseContext *c, char *name, char *argTypes, char *retType, int index);
 void AddRegister(ParseContext *c, char *name, VMUVALUE addr);
 String *AddString(ParseContext *c, char *value);
 VMUVALUE AddStringRef(ParseContext *c, String *str);
 VMUVALUE AddLocalSymbolFixup(ParseContext *c, Symbol *symbol, VMUVALUE offset);
-void *GlobalAlloc(ParseContext *c, size_t size);
-void *LocalAlloc(ParseContext *c, size_t size);
+void Fatal(ParseContext *c, const char *fmt, ...);
 
 /* db_statement.c */
 void ParseStatement(ParseContext *c, Token tkn);
@@ -543,6 +538,8 @@ int HexNumberToken(ParseContext *c);
 int BinaryNumberToken(ParseContext *c);
 int StringToken(ParseContext *c);
 int CharToken(ParseContext *c);
+void *GlobalAlloc(ParseContext *c, size_t size);
+void *LocalAlloc(ParseContext *c, size_t size);
 void ParseError(ParseContext *c, char *fmt, ...);
 
 /* db_symbols.c */
@@ -580,8 +577,8 @@ void fixup(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 void fixupbranch(ParseContext *c, VMUVALUE chn, VMUVALUE val);
 
 /* db_wrimage.c */
-int StartImage(ParseContext *c, char *name);
-int BuildImage(ParseContext *c, char *name);
+int StartImage(ParseContext *c, const char *name);
+int BuildImage(ParseContext *c, const char *name);
 VMUVALUE WriteSection(ParseContext *c, Section *section, const uint8_t *buf, VMUVALUE size);
 VMUVALUE ReadSectionOffset(ParseContext *c, Section *section, VMUVALUE offset);
 void WriteSectionOffset(ParseContext *c, Section *section, VMUVALUE offset, VMUVALUE value);

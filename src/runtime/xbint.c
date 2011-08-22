@@ -1,24 +1,23 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "db_system.h"
+#include "mem_malloc.h"
 #include "db_vm.h"
 
-typedef struct {
-    FILE *fp;
-    int lineNumber;
-} SourceInfo;
-
-FAR_DATA uint8_t space[RAMSIZE];
-
-static FILE *ifp;
+static void MyInfo(System *sys, const char *fmt, va_list ap);
+static void MyError(System *sys, const char *fmt, va_list ap);
+static SystemOps myOps = {
+    MyInfo,
+    MyError
+};
 
 int main(int argc, char *argv[])
 {
-    size_t freeSize, stackSize;
-    Interpreter *i;
     ImageHdr *image;
+    Interpreter *i;
     char *infile;
-    System sys;
+    System *sys;
     
     if (argc != 2) {
         fprintf(stderr, "usage: xbint <file>\n");
@@ -26,35 +25,37 @@ int main(int argc, char *argv[])
     }
     infile = argv[1];
     
-    if (!(ifp = fopen(infile, "rb"))) {
-        fprintf(stderr, "error: can't open '%s'\n", infile);
-        return 1;
-    }
-    
-    InitFreeSpace(&sys, space, sizeof(space));
-    
-    image = LoadImage(&sys);
+    sys = MemInit();
+    sys->ops = &myOps;
 
-    i = (Interpreter *)AllocateAllFreeSpace(&sys, &freeSize);
-    stackSize = (freeSize - sizeof(Interpreter)) / sizeof(VMVALUE);
-    if (stackSize <= 0)
-        VM_printf("insufficient memory\n");
-    else {
-        InitInterpreter(i, stackSize);
-        Execute(i, image);
-    }
-    
-    fclose(ifp);
+    if (!(image = LoadImage(sys, infile)))
+        Fatal(sys, "can't load image '%s'", infile);
+
+    if (!(i = (Interpreter *)InitInterpreter(sys, image)))
+        Fatal(sys, "insufficient memory");
+        
+    Execute(i, image);
     
     return 0;
 }
 
-void ImageFileRewind(void)
+static void MyInfo(System *sys, const char *fmt, va_list ap)
 {
-    fseek(ifp, 0, SEEK_SET);
+    vfprintf(stdout, fmt, ap);
 }
 
-int ImageFileRead(uint8_t *buf, int size)
+static void MyError(System *sys, const char *fmt, va_list ap)
 {
-    return fread(buf, 1, size, ifp) == size;
+    vfprintf(stderr, fmt, ap);
+}
+
+void Fatal(System *sys, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    xbError(sys, "error: ");
+    xbErrorV(sys, fmt, ap);
+    xbError(sys, "\n");
+    va_end(ap);
+    exit(1);
 }

@@ -8,7 +8,6 @@
 #include <string.h>
 #include "db_vmdebug.h"
 #include "db_image.h"
-#include "db_system.h"
 
 FLASH_SPACE OTDEF OpcodeTable[] = {
 { OP_HALT,      "HALT",     FMT_NONE    },
@@ -60,18 +59,18 @@ FLASH_SPACE OTDEF OpcodeTable[] = {
 };
 
 /* DecodeFunction - decode the instructions in a function code object */
-void DecodeFunction(VMUVALUE base, const uint8_t *code, int len)
+void DecodeFunction(System *sys, VMUVALUE base, const uint8_t *code, int len)
 {
     const uint8_t *end = code + len;
     while (code < end) {
-        int len = DecodeInstruction(base, code);
+        int len = DecodeInstruction(sys, base, code);
         code += len;
         base += len;
     }
 }
 
 /* DecodeInstruction - decode a single bytecode instruction */
-int DecodeInstruction(VMUVALUE addr, const uint8_t *lc)
+int DecodeInstruction(System *sys, VMUVALUE addr, const uint8_t *lc)
 {
     uint8_t opcode, bytes[sizeof(VMVALUE)];
     FLASH_SPACE OTDEF *op;
@@ -83,7 +82,7 @@ int DecodeInstruction(VMUVALUE addr, const uint8_t *lc)
     opcode = VMCODEBYTE(lc);
 
     /* show the address */
-    VM_printf("%0*x %02x ", sizeof(VMVALUE) * 2, addr, opcode);
+    xbInfo(sys, "%0*x %02x ", sizeof(VMVALUE) * 2, addr, opcode);
     n = 1;
 
     /* display the operands */
@@ -92,46 +91,46 @@ int DecodeInstruction(VMUVALUE addr, const uint8_t *lc)
             switch (op->fmt) {
             case FMT_NONE:
                 for (i = 0; i < sizeof(VMVALUE); ++i)
-                    VM_printf("   ");
-                VM_printf("%s\n", op->name);
+                    xbInfo(sys, "   ");
+                xbInfo(sys, "%s\n", op->name);
                 break;
             case FMT_BYTE:
                 bytes[0] = VMCODEBYTE(lc + 1);
-                VM_printf("%02x ", bytes[0]);
+                xbInfo(sys, "%02x ", bytes[0]);
                 for (i = 1; i < sizeof(VMVALUE); ++i)
-                    VM_printf("   ");
-                VM_printf("%s %02x\n", op->name, bytes[0]);
+                    xbInfo(sys, "   ");
+                xbInfo(sys, "%s %02x\n", op->name, bytes[0]);
                 n += 1;
                 break;
             case FMT_SBYTE:
                 sbyte = (int8_t)VMCODEBYTE(lc + 1);
-                VM_printf("%02x ", (uint8_t)sbyte);
+                xbInfo(sys, "%02x ", (uint8_t)sbyte);
                 for (i = 1; i < sizeof(VMVALUE); ++i)
-                    VM_printf("   ");
-                VM_printf("%s %d\n", op->name, sbyte);
+                    xbInfo(sys, "   ");
+                xbInfo(sys, "%s %d\n", op->name, sbyte);
                 n += 1;
                 break;
             case FMT_WORD:
                 for (i = 0; i < sizeof(VMVALUE); ++i) {
                     bytes[i] = VMCODEBYTE(lc + i + 1);
-                    VM_printf("%02x ", bytes[i]);
+                    xbInfo(sys, "%02x ", bytes[i]);
                 }
-                VM_printf("%s ", op->name);
+                xbInfo(sys, "%s ", op->name);
                 for (i = 0; i < sizeof(VMVALUE); ++i)
-                    VM_printf("%02x", bytes[i]);
-                VM_printf("\n");
+                    xbInfo(sys, "%02x", bytes[i]);
+                xbInfo(sys, "\n");
                 n += sizeof(VMVALUE);
                 break;
             case FMT_BR:
                 for (i = 0; i < sizeof(VMVALUE); ++i) {
                     bytes[i] = VMCODEBYTE(lc + i + 1);
                     offset = (offset << 8) | bytes[i];
-                    VM_printf("%02x ", bytes[i]);
+                    xbInfo(sys, "%02x ", bytes[i]);
                 }
-                VM_printf("%s ", op->name);
+                xbInfo(sys, "%s ", op->name);
                 for (i = 0; i < sizeof(VMVALUE); ++i)
-                    VM_printf("%02x", bytes[i]);
-                VM_printf(" # %04x\n", addr + 1 + sizeof(VMVALUE) + offset);
+                    xbInfo(sys, "%02x", bytes[i]);
+                xbInfo(sys, " # %04x\n", addr + 1 + sizeof(VMVALUE) + offset);
                 n += sizeof(VMVALUE);
                 break;
             }
@@ -139,7 +138,7 @@ int DecodeInstruction(VMUVALUE addr, const uint8_t *lc)
         }
             
     /* unknown opcode */
-    VM_printf("      <UNKNOWN>\n");
+    xbInfo(sys, "      <UNKNOWN>\n");
     return 1;
 }
 

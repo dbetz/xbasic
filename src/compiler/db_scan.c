@@ -11,7 +11,6 @@
 #include <setjmp.h>
 #include <ctype.h>
 #include "db_compiler.h"
-#include "db_system.h"
 
 /* keyword table */
 static struct {
@@ -72,7 +71,6 @@ void RewindInput(ParseContext *c)
     (*f->u.main.rewind)(f->u.main.getLineCookie);
 
     /* initialize the parse context */
-    f->name[0] = '\0';
     f->lineNumber = 0;
     
     /* setup the input file stack */
@@ -89,27 +87,7 @@ int PushFile(ParseContext *c, const char *name)
     /* check to see if the file has already been included */
     for (inc = c->includedFiles; inc != NULL; inc = inc->next)
         if (strcmp(name, inc->name) == 0)
-            return VMTRUE;
-    
-    /* allocate a parse file structure */
-    if (!(f = (ParseFile *)malloc(sizeof(ParseFile) + strlen(name))))
-        ParseError(c, "insufficient memory");
-    
-    /* open the input file */
-    if (!(f->u.file.fp = VM_fopen(name, "r"))) {
-        free(f);
-        return VMFALSE;
-    }
-    f->u.file.file = inc;
-    
-    /* initialize the parse context */
-    strcpy(f->name, name);
-    f->lineNumber = 0;
-    
-    /* push the file onto the input file stack */
-    f->next = c->currentFile;
-    c->currentFile = f;
-    c->currentInclude = inc;
+            return TRUE;
     
     /* add this file to the list of already included files */
     if (!(inc = (IncludedFile *)malloc(sizeof(IncludedFile) + strlen(name))))
@@ -118,8 +96,27 @@ int PushFile(ParseContext *c, const char *name)
     inc->next = c->includedFiles;
     c->includedFiles = inc;
 
+    /* allocate a parse file structure */
+    if (!(f = (ParseFile *)malloc(sizeof(ParseFile))))
+        ParseError(c, "insufficient memory");
+    
+    /* open the input file */
+    if (!(f->u.file.fp = xbOpenFileInPath(c->sys, name, "r"))) {
+        free(f);
+        return FALSE;
+    }
+    f->u.file.file = inc;
+    
+    /* initialize the parse context */
+    f->lineNumber = 0;
+    
+    /* push the file onto the input file stack */
+    f->next = c->currentFile;
+    c->currentFile = f;
+    c->currentInclude = inc;
+    
     /* return successfully */
-    return VMTRUE;
+    return TRUE;
 }
 
 /* ClearIncludedFiles - clear the list of included files for the next pass */
@@ -162,17 +159,17 @@ int GetLine(ParseContext *c)
         
         /* get the current input file */
         if (!(f = c->currentFile))
-            return VMFALSE;
+            return FALSE;
         
         /* get a line from the main input */
         if (f == &c->mainFile) {
-            if ((*f->u.main.getLine)(f->u.main.getLineCookie, c->sys->lineBuf, sizeof(c->sys->lineBuf) - 1))
+            if ((*f->u.main.getLine)(f->u.main.getLineCookie, c->lineBuf, sizeof(c->lineBuf) - 1))
                 break;
         }
         
         /* get a line from the current include file */
         else {
-            if (fgets(c->sys->lineBuf, sizeof(c->sys->lineBuf) - 1, f->u.file.fp))
+            if (xbGetLine(f->u.file.fp, c->lineBuf, sizeof(c->lineBuf) - 1))
                 break;
         }
         
@@ -190,21 +187,21 @@ int GetLine(ParseContext *c)
     }
     
     /* make sure the line is correctly terminated */
-    len = strlen(c->sys->lineBuf);
-    if (len == 0 || c->sys->lineBuf[len - 1] != '\n') {
-        c->sys->lineBuf[len++] = '\n';
-        c->sys->lineBuf[len] = '\0';
+    len = strlen(c->lineBuf);
+    if (len == 0 || c->lineBuf[len - 1] != '\n') {
+        c->lineBuf[len++] = '\n';
+        c->lineBuf[len] = '\0';
     }
 
     /* initialize the input buffer */
-    c->sys->linePtr = c->sys->lineBuf;
+    c->linePtr = c->lineBuf;
     ++f->lineNumber;
 
     /* clear lookahead token */
     c->savedToken = T_NONE;
 
     /* return successfully */
-    return VMTRUE;
+    return TRUE;
 }
 
 /* FRequire - fetch a token and check it */
@@ -366,7 +363,7 @@ static int NextToken(ParseContext *c)
     ch = SkipSpaces(c);
 
     /* remember the start of the current token */
-    c->tokenOffset = (int)(c->sys->linePtr - c->sys->lineBuf);
+    c->tokenOffset = (int)(c->linePtr - c->lineBuf);
 
     /* check the next character */
     switch (ch) {
@@ -424,22 +421,22 @@ static int NextToken(ParseContext *c)
             char *savePtr;
             switch (tkn = IdentifierToken(c,ch)) {
             case T_ELSE:
-                savePtr = c->sys->linePtr;
+                savePtr = c->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_IF:
                         tkn = T_ELSE_IF;
                         break;
                     default:
-                        c->sys->linePtr = savePtr;
+                        c->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->sys->linePtr = savePtr;
+                    c->linePtr = savePtr;
                 break;
             case T_END:
-                savePtr = c->sys->linePtr;
+                savePtr = c->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_DEF:
@@ -455,15 +452,15 @@ static int NextToken(ParseContext *c)
                         tkn = T_END_ASM;
                         break;
                     default:
-                        c->sys->linePtr = savePtr;
+                        c->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->sys->linePtr = savePtr;
+                    c->linePtr = savePtr;
                 break;
             case T_DO:
-                savePtr = c->sys->linePtr;
+                savePtr = c->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_WHILE:
@@ -473,15 +470,15 @@ static int NextToken(ParseContext *c)
                         tkn = T_DO_UNTIL;
                         break;
                     default:
-                        c->sys->linePtr = savePtr;
+                        c->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->sys->linePtr = savePtr;
+                    c->linePtr = savePtr;
                 break;
             case T_LOOP:
-                savePtr = c->sys->linePtr;
+                savePtr = c->linePtr;
                 if ((ch = SkipSpaces(c)) != EOF && IdentifierCharP(ch)) {
                     switch (IdentifierToken(c, ch)) {
                     case T_WHILE:
@@ -491,12 +488,12 @@ static int NextToken(ParseContext *c)
                         tkn = T_LOOP_UNTIL;
                         break;
                     default:
-                        c->sys->linePtr = savePtr;
+                        c->linePtr = savePtr;
                         break;
                     }
                 }
                 else
-                    c->sys->linePtr = savePtr;
+                    c->linePtr = savePtr;
                 break;
             }
         }
@@ -684,10 +681,10 @@ static int SkipComment(ParseContext *c)
     lastch = '\0';
     while ((ch = XGetC(c)) != EOF) {
         if (lastch == '*' && ch == '/')
-            return VMTRUE;
+            return TRUE;
         lastch = ch;
     }
-    return VMFALSE;
+    return FALSE;
 }
 
 /* GetChar - get the next character */
@@ -699,7 +696,7 @@ int GetChar(ParseContext *c)
     if (c->inComment) {
         if (!SkipComment(c))
             return EOF;
-        c->inComment = VMFALSE;
+        c->inComment = FALSE;
     }
 
     /* loop until we find a non-comment character */
@@ -717,7 +714,7 @@ int GetChar(ParseContext *c)
             }
             else if (ch == '*') {
                 if (!SkipComment(c)) {
-                    c->inComment = VMTRUE;
+                    c->inComment = TRUE;
                     return EOF;
                 }
             }
@@ -743,8 +740,8 @@ static int XGetC(ParseContext *c)
     int ch;
     
     /* get the next character on the current line */
-    if (!(ch = *c->sys->linePtr++)) {
-        --c->sys->linePtr;
+    if (!(ch = *c->linePtr++)) {
+        --c->linePtr;
         return EOF;
     }
     
@@ -756,7 +753,7 @@ static int XGetC(ParseContext *c)
 void UngetC(ParseContext *c)
 {
     /* backup the input pointer */
-    --c->sys->linePtr;
+    --c->linePtr;
 }
 
 /* ParseError - report a parsing error */
@@ -767,21 +764,21 @@ void ParseError(ParseContext *c, char *fmt, ...)
 
     /* print the error message */
     va_start(ap, fmt);
-    VM_printf("error: ");
-    VM_vprintf(fmt, ap);
-    VM_putchar('\n');
+    xbError(c->sys, "error: ");
+    xbErrorV(c->sys, fmt, ap);
+    xbError(c->sys, "\n");
     va_end(ap);
 
     /* show the context */
     if ((f = c->currentFile) != NULL) {
         if (f == &c->mainFile)
-            VM_printf("  line %d\n", c->currentFile->lineNumber);
+            xbError(c->sys, "  line %d\n", c->currentFile->lineNumber);
         else
-            VM_printf("  file '%s', line %d\n", f->name, f->lineNumber);
-        VM_printf("    %s\n", c->sys->lineBuf);
-        VM_printf("    %*s\n", c->tokenOffset, "^");
+            xbError(c->sys, "  file '%s', line %d\n", f->u.file.file->name, f->lineNumber);
+        xbError(c->sys, "    %s\n", c->lineBuf);
+        xbError(c->sys, "    %*s\n", c->tokenOffset, "^");
     }
 
 	/* exit until we fix the compiler so it can recover from parse errors */
-    longjmp(c->sys->errorTarget, 1);
+    longjmp(c->errorTarget, 1);
 }

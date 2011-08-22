@@ -86,8 +86,8 @@
     <ClCompile Include="..\obj\cygwin\serial_helper.c" />
     <ClCompile Include="..\obj\cygwin\xbasic_vm.c" />
     <ClCompile Include="..\src\common\db_config.c" />
-    <ClCompile Include="..\src\common\db_platform.c" />
     <ClCompile Include="..\src\common\db_system.c" />
+    <ClCompile Include="..\src\common\mem_malloc.c" />
     <ClCompile Include="..\src\common\osint_win32.c" />
     <ClCompile Include="..\src\compiler\db_compiler.c" />
     <ClCompile Include="..\src\compiler\db_expr.c" />
@@ -98,6 +98,7 @@
     <ClCompile Include="..\src\compiler\db_types.c" />
     <ClCompile Include="..\src\compiler\db_wrimage.c" />
     <ClCompile Include="..\src\compiler\xbcom.c" />
+    <ClCompile Include="..\src\compiler\xb_api.c" />
     <ClCompile Include="..\src\loader\db_loader.c" />
     <ClCompile Include="..\src\loader\db_packet.c" />
     <ClCompile Include="..\src\loader\PLoadLib.c" />
@@ -107,7 +108,9 @@
     <ClInclude Include="..\src\common\db_config.h" />
     <ClInclude Include="..\src\common\db_image.h" />
     <ClInclude Include="..\src\common\db_system.h" />
+    <ClInclude Include="..\src\common\mem_malloc.h" />
     <ClInclude Include="..\src\compiler\db_compiler.h" />
+    <ClInclude Include="..\src\compiler\xb_api.h" />
     <ClInclude Include="..\src\loader\db_loader.h" />
     <ClInclude Include="..\src\loader\db_packet.h" />
     <ClInclude Include="..\src\loader\PLoadLib.h" />

@@ -2,6 +2,7 @@
 #define __DB_VMDEBUG_H__
 
 #include "db_config.h"
+#include "db_system.h"
 
 /* instruction output formats */
 #define FMT_NONE        0
@@ -18,7 +19,7 @@ typedef struct {
 
 extern FLASH_SPACE OTDEF OpcodeTable[];
 
-void DecodeFunction(VMUVALUE base, const uint8_t *code, int len);
-int DecodeInstruction(VMUVALUE addr, const uint8_t *lc);
+void DecodeFunction(System *sys, VMUVALUE base, const uint8_t *code, int len);
+int DecodeInstruction(System *sys, VMUVALUE addr, const uint8_t *lc);
 
 #endif

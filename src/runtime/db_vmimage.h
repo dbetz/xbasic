@@ -18,7 +18,8 @@ typedef struct {
 
 /* in-memory image header */
 typedef struct {
-    VMUVALUE        mainCode;   /* main code */
+    VMUVALUE        mainCode;
+    VMUVALUE        stackSize;
     VMUVALUE        sectionCount;
     ImageSection    sections[1];
 } ImageHdr;

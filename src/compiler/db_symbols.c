@@ -115,7 +115,7 @@ Symbol *AddLocal(ParseContext *c, const char *name, Type *type, VMUVALUE offset)
         ParseError(c, "duplicate symbol '%s'", name);
         
     /* allocate the symbol structure */
-    sym = (Symbol *)LocalAlloc(c, size);
+    sym = (Symbol *)xbLocalAlloc(c->sys, size);
     strcpy(sym->name, name);
     sym->storageClass = SC_LOCAL;
     sym->section = NULL;
@@ -155,7 +155,7 @@ void DumpSymbols(ParseContext *c, SymbolTable *table, char *tag)
 {
     Symbol *sym;
     if ((sym = table->head) != NULL) {
-        VM_printf("%s:\n", tag);
+        xbInfo(c->sys, "%s:\n", tag);
         for (; sym != NULL; sym = sym->next) {
             VMUVALUE value = sym->v.variable.offset;
             switch (sym->storageClass) {
@@ -168,7 +168,7 @@ void DumpSymbols(ParseContext *c, SymbolTable *table, char *tag)
                 // no offset
                 break;
             }
-            VM_printf("  %c %c %08x %08x %s\n", "CLTDHR"[sym->storageClass], "IBSAPF"[sym->type->id], value, sym->v.variable.fixups, sym->name);
+            xbInfo(c->sys, "  %c %c %08x %08x %s\n", "CLTDHR"[sym->storageClass], "IBSAPF"[sym->type->id], value, sym->v.variable.fixups, sym->name);
         }
     }
 }

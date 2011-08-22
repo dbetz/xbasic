@@ -26,7 +26,7 @@ ParseContext *InitCompiler(System *sys, BoardConfig *config, size_t codeBufSize)
     ParseContext *c;
     
     /* allocate a parse context */
-    if (!(c = (ParseContext *)AllocateFreeSpace(sys, sizeof(ParseContext) + codeBufSize)))
+    if (!(c = (ParseContext *)xbGlobalAlloc(sys, sizeof(ParseContext) + codeBufSize)))
         return NULL;
         
     /* initialize the new parse context */
@@ -49,11 +49,11 @@ ParseContext *InitCompiler(System *sys, BoardConfig *config, size_t codeBufSize)
 
     /* setup the target sections */
     if (!(c->textTarget = GetSection(c->config, c->config->defaultTextSection))) {
-        VM_printf("Unknown section: %s\n", c->config->defaultTextSection);
+        xbError(c->sys, "Unknown section: %s\n", c->config->defaultTextSection);
         return NULL;
     }
     if (!(c->dataTarget = GetSection(c->config, c->config->defaultDataSection))) {
-        VM_printf("Unknown section: %s\n", c->config->defaultDataSection);
+        xbError(c->sys, "Unknown section: %s\n", c->config->defaultDataSection);
         return NULL;
     }
     
@@ -62,23 +62,18 @@ ParseContext *InitCompiler(System *sys, BoardConfig *config, size_t codeBufSize)
 }
 
 /* Compile - compile a program */
-int Compile(ParseContext *c, char *name)
+int Compile(ParseContext *c, const char *name)
 {
-	/* setup an error target */
-    if (setjmp(c->sys->errorTarget) != 0) {
+    /* setup an error target */
+    if (setjmp(c->errorTarget) != 0) {
         CloseParseContext(c);
-        return VMFALSE;
+        return FALSE;
     }
         
     /* start the image and initialize the interpreter stack size */
     if (!StartImage(c, name))
-        return VMFALSE;
+        return FALSE;
     c->stackSize = DEFAULT_STACK_SIZE;
-
-    /* use the rest of the free space for the compiler heap */
-    c->nextGlobal = AllocateAllFreeSpace(c->sys, &c->heapSize);
-    c->heapTop = c->nextLocal = c->nextGlobal + c->heapSize;
-    c->maxHeapUsed = 0;
 
     /* initialize block nesting stack */
     c->btop = (Block *)((char *)c->blockBuf + sizeof(c->blockBuf));
@@ -116,7 +111,7 @@ int Compile(ParseContext *c, char *name)
     AddRegister(c, "VSCL",  COG_BASE + 0x1ff * 4);
 
     /* initialize scanner */
-    c->inComment = VMFALSE;
+    c->inComment = FALSE;
     
     /* do three passes over the source program */
     for (c->pass = 1; c->pass <= 3; ++c->pass) {
@@ -143,6 +138,9 @@ int Compile(ParseContext *c, char *name)
             case MAIN_NOT_DEFINED:
                 ParseError(c, "no main code");
                 break;
+            case MAIN_DEFINED:
+                // nothing to do
+                break;
             }
     
             /* make a list of dependencies at the end of the second pass */
@@ -162,20 +160,20 @@ int Compile(ParseContext *c, char *name)
 
     /* show the symbol and string tables */
     if (c->flags & COMPILER_DEBUG) {
-        VM_putchar('\n');
+        xbInfo(c->sys, "\n");
         DumpSymbols(c, &c->globals, "symbols");
         if (c->strings) {
-            int first = VMTRUE;
+            int first = TRUE;
             String *str;
             for (str = c->strings; str != NULL; str = str->next)
                 if (str->placed) {
                     if (first) {
-                        VM_printf("\nstrings:\n");
-                        first = VMFALSE;
+                        xbInfo(c->sys, "\nstrings:\n");
+                        first = FALSE;
                     }
-                    VM_printf("  %08x %s\n", c->textTarget->base + str->offset, str->value);
+                    xbInfo(c->sys, "  %08x %s\n", c->textTarget->base + str->offset, str->value);
                 }
-            VM_putchar('\n');
+            xbInfo(c->sys, "\n");
         }
     }
 
@@ -224,9 +222,9 @@ static void GenerateDependencies(ParseContext *c)
 
     if (c->flags & COMPILER_DEBUG) {
         if ((d = c->mainDependencies) != NULL) {
-            VM_printf("main dependencies:\n");
+            xbInfo(c->sys, "main dependencies:\n");
             for (; d != NULL; d = d->next)
-                VM_printf("  %s\n", d->symbol->name);
+                xbInfo(c->sys, "  %s\n", d->symbol->name);
         }
     }
 }
@@ -257,8 +255,8 @@ void StoreCode(ParseContext *c)
     /* show the function disassembly */
     if (c->flags & COMPILER_DEBUG) {
         Symbol *symbol = c->function->u.functionDefinition.symbol;
-        VM_printf("\n%s:\n", symbol ? symbol->name : "[main]");
-        DecodeFunction(c->textTarget->base + c->textTarget->offset, c->codeBuf, codeSize);
+        xbInfo(c->sys, "\n%s:\n", symbol ? symbol->name : "[main]");
+        DecodeFunction(c->sys, c->textTarget->base + c->textTarget->offset, c->codeBuf, codeSize);
         if (c->functionType)
             DumpSymbols(c, &c->function->type->u.functionInfo.arguments, "arguments");
         DumpSymbols(c, &c->function->u.functionDefinition.locals, "locals");
@@ -300,7 +298,7 @@ VMUVALUE AddStringRef(ParseContext *c, String *str)
     if (!str->placed) {
         str->offset = c->textTarget->offset;
         c->textTarget->offset += WriteSection(c, c->textTarget, str->value, strlen((char *)str->value) + 1);
-        str->placed = VMTRUE;
+        str->placed = TRUE;
     }
     return c->textTarget->base + str->offset;
 }
@@ -318,7 +316,7 @@ VMUVALUE AddLocalSymbolFixup(ParseContext *c, Symbol *symbol, VMUVALUE offset)
     
     /* add a new fixup if no existing one was found */
     if (!fixup) {
-        fixup = LocalAlloc(c, sizeof(LocalFixup));
+        fixup = xbLocalAlloc(c->sys, sizeof(LocalFixup));
         fixup->symbol = symbol;
         fixup->chain = 0;
         fixup->next = 0;
@@ -394,24 +392,27 @@ void AddRegister(ParseContext *c, char *name, VMUVALUE addr)
 void *GlobalAlloc(ParseContext *c, size_t size)
 {
     void *p;
-    size = ROUND_TO_WORDS(size);
-    if (c->nextGlobal + size > c->nextLocal)
-        Fatal(c->sys, "insufficient memory");
-    p = c->nextGlobal;
-    c->nextGlobal += size;
-    if (c->heapSize - (c->nextLocal - c->nextGlobal) > c->maxHeapUsed)
-        c->maxHeapUsed = c->heapSize - (c->nextLocal - c->nextGlobal);
+    if (!(p = xbGlobalAlloc(c->sys, size)))
+        Fatal(c, "insufficient memory");
     return p;
 }
 
 /* LocalAlloc - allocate memory from the local heap */
 void *LocalAlloc(ParseContext *c, size_t size)
 {
-    size = ROUND_TO_WORDS(size);
-    if (c->nextLocal - size < c->nextGlobal)
-        Fatal(c->sys, "insufficient memory");
-    c->nextLocal -= size;
-    if (c->heapSize - (c->nextLocal - c->nextGlobal) > c->maxHeapUsed)
-        c->maxHeapUsed = c->heapSize - (c->nextLocal - c->nextGlobal);
-    return c->nextLocal;
+    void *p;
+    if (!(p = xbLocalAlloc(c->sys, size)))
+        Fatal(c, "insufficient memory");
+    return p;
 }
+
+/* Fatal - report a fatal error and exit */
+void Fatal(ParseContext *c, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    xbErrorV(c->sys, fmt, ap);
+    va_end(ap);
+    longjmp(c->errorTarget, 1);
+}
+

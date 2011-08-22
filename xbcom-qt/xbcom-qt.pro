@@ -38,10 +38,10 @@ SOURCES += \
     ../src/loader/db_packet.c \
     ../src/loader/db_loader.c \
     ../src/runtime/db_vmdebug.c \
-    ../obj/cygwin/xbasic_vm.c \
-    ../obj/cygwin/serial_helper.c \
-    ../obj/cygwin/hub_loader.c \
-    ../obj/cygwin/flash_loader.c \
+    ../obj/macosx/xbasic_vm.c \
+    ../obj/macosx/serial_helper.c \
+    ../obj/macosx/hub_loader.c \
+    ../obj/macosx/flash_loader.c \
     ../src/common/osint_qt.c
 
 HEADERS += \

@@ -8,68 +8,30 @@
 #define __DB_CONFIG_H__
 
 #include <stdio.h>
+#include "db_system.h"
 
 /* configuration variables
 
 RAMSIZE		the total amount of RAM available to xbasic
-DATSIZE		the size of the heap used by the compiler
 MAXCODE		the size of the bytecode staging buffer used by the compiler
 
 */
 
-/* support for PIC24HJ128GP502 or dsPIC33FJ128GP802 */
-#if defined(PIC24) || defined(dsPIC33)
-#define WORD_SIZE_16
-#define NO_STDINT
-#define FAR_DATA		__attribute__((far))
-#define FLASH_SPACE		const
-#define RAMSIZE         (5 * 1024)
-#define DATSIZE         1500
-#define MAXCODE         (8 * 1024)
-
-/* support for the Propeller under Catalina C */
-#elif defined(PROPELLER_CAT)
-#define WORD_SIZE_32
-#define FAR_DATA
-#define FLASH_SPACE		const
-#ifdef SMALL_MEMORY
-#define RAMSIZE         (16 * 1024)
-#define DATSIZE         (4 * 1024)
-#define MAXCODE         (4 * 1024)
-#else
-#define RAMSIZE         (32 * 1024)
-#define DATSIZE         (8 * 1024)
-#define MAXCODE         (8 * 1024)
-#endif
-#define NEED_STRCASECMP
-
-/* support for the Propeller under ZOG */
-#elif defined(PROPELLER_ZOG)
-#define WORD_SIZE_32
-#define FAR_DATA
-#define FLASH_SPACE		const
-#define RAMSIZE         (32 * 1024)
-#define DATSIZE         (8 * 1024)
-#define MAXCODE         (8 * 1024)
-#define NEED_STRCASECMP
-
 /* support for windows */
-#elif defined(WIN32)
+#if defined(WIN32)
 #define WORD_SIZE_32
 #define FAR_DATA
 #define FLASH_SPACE		const
 #define RAMSIZE         (256 * 1024)
-#define DATSIZE         (64 * 1024)
 #define MAXCODE         (32 * 1024)
 #define NEED_STRCASECMP
 
-/* support for posix */
+/* support for posix (cygwin, linux, macosx) */
 #else
 #define WORD_SIZE_32
 #define FAR_DATA
 #define FLASH_SPACE		const
 #define RAMSIZE         (256 * 1024)
-#define DATSIZE         (64 * 1024)
 #define MAXCODE         (32 * 1024)
 
 #endif
@@ -101,14 +63,6 @@ typedef uint16_t VMUVALUE;
 typedef int32_t VMVALUE;
 typedef uint32_t VMUVALUE;
 #endif
-
-#ifndef TRUE
-#define TRUE        1
-#define FALSE       0
-#endif
-
-#define VMTRUE		TRUE
-#define VMFALSE   	FALSE
 
 #define RCFAST      0x00
 #define RCSLOW      0x01
@@ -163,8 +117,8 @@ struct BoardConfig {
     char name[1];
 };
 
-void ParseConfigurationFile(char *path);
-BoardConfig *GetBoardConfig(char *name);
-Section *GetSection(BoardConfig *config, char *name);
+void ParseConfigurationFile(System *sys, const char *path);
+BoardConfig *GetBoardConfig(const char *name);
+Section *GetSection(BoardConfig *config, const char *name);
 
 #endif

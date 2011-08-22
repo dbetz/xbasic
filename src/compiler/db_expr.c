@@ -35,12 +35,12 @@ ParseTreeNode *ParseExpr(ParseContext *c)
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
         NodeListEntry *entry, **pLast;
         node2->type = &c->integerType;
-        node2->u.exprList.exprs = entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        node2->u.exprList.exprs = entry = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
         entry->node = node;
         entry->next = NULL;
         pLast = &entry->next;
         do {
-            entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            entry = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
             entry->node = ParseExpr2(c);
             entry->next = NULL;
             *pLast = entry;
@@ -62,12 +62,12 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
         NodeListEntry *entry, **pLast;
         node2->type = &c->integerType;
-        node2->u.exprList.exprs = entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        node2->u.exprList.exprs = entry = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
         entry->node = node;
         entry->next = NULL;
         pLast = &entry->next;
         do {
-            entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            entry = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
             entry->node = ParseExpr2(c);
             entry->next = NULL;
             *pLast = entry;
@@ -307,6 +307,9 @@ ParseTreeNode *ParsePrimary(ParseContext *c)
         else
             SaveToken(c, tkn);
         break;
+    default:
+        // nothing to do
+        break;
     }
     return node;
 }
@@ -341,7 +344,7 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
             NodeListEntry *actual;
 
             /* allocate an actual argument structure and push it onto the list of arguments */
-            actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+            actual = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
             actual->node = ParseExpr(c);
             actual->next = node->u.functionCall.args;
             node->u.functionCall.args = actual;
@@ -592,7 +595,7 @@ integerOp:
 /* NewParseTreeNode - allocate a new parse tree node */
 ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 {
-    ParseTreeNode *node = (ParseTreeNode *)LocalAlloc(c, sizeof(ParseTreeNode));
+    ParseTreeNode *node = (ParseTreeNode *)xbLocalAlloc(c->sys, sizeof(ParseTreeNode));
     memset(node, 0, sizeof(ParseTreeNode));
     node->nodeType = type;
     return node;
@@ -601,7 +604,7 @@ ParseTreeNode *NewParseTreeNode(ParseContext *c, int type)
 /* AddNodeToList - add a node to a parse tree node list */
 void AddNodeToList(ParseContext *c, NodeListEntry ***ppNextEntry, ParseTreeNode *node)
 {
-    NodeListEntry *entry = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    NodeListEntry *entry = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
     entry->node = node;
     entry->next = NULL;
     **ppNextEntry = entry;
