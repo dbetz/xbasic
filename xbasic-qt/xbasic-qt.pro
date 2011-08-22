@@ -10,8 +10,6 @@
 #
 # Test using array.bas ... David says some output is missing.
 #
-# Think about a better way to specify the project. - done.
-# 1 add file change save for exit dialog - done
 # 2 make xbcom-qt build all from scratch
 # 3 documentation: add xBasic help
 #
@@ -25,6 +23,8 @@
 #   make the compiler and include path properties default settings.
 # - add Ctrl-LeftClick to zoom on a function or constant def
 #
+# Think about a better way to specify the project. - done.
+# add file change save for exit dialog - done
 #-------------------------------------------------
 
 QT += core gui

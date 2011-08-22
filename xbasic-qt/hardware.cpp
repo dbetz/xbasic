@@ -138,32 +138,33 @@ void Hardware::saveBoards()
         return;
     }
 
-    if(cfg.open(QIODevice::WriteOnly))
+    QByteArray barry = "";
+    QString currentName = ui->comboBoxBoard->currentText().toUpper();
+    XBasicBoard *board = xBasicConfig->getBoardByName(currentName);
+    if(board == NULL)
+        ui->comboBoxBoard->addItem(currentName);
+    for(int n = 0; n < ui->comboBoxBoard->count(); n++)
     {
-        QByteArray barry = "";
-        QString currentName = ui->comboBoxBoard->currentText().toUpper();
-        XBasicBoard *board = xBasicConfig->getBoardByName(currentName);
-        if(board == NULL)
-            ui->comboBoxBoard->addItem(currentName);
-        for(int n = 0; n < ui->comboBoxBoard->count(); n++)
+        QString name = ui->comboBoxBoard->itemText(n);
+        XBasicBoard *board = xBasicConfig->getBoardByName(name);
+        if(board == NULL && name == currentName)
         {
-            QString name = ui->comboBoxBoard->itemText(n);
-            XBasicBoard *board = xBasicConfig->getBoardByName(name);
-            if(board == NULL && name == currentName)
-            {
-                board = xBasicConfig->newBoard(name);
-                setBoardInfo(board);
-            }
-            QString ba = board->getFormattedConfig();
-            qDebug() << ba;
-            barry.append(ba);
+            board = xBasicConfig->newBoard(name);
+            setBoardInfo(board);
         }
+        QString ba = board->getFormattedConfig();
+        qDebug() << ba;
+        barry.append(ba);
+    }
 
 
-        QMessageBox sbox(QMessageBox::Question,tr("Saving xBasic.cfg File"),"",
-                         QMessageBox::Save | QMessageBox::Cancel);
-        sbox.setInformativeText(tr("Save new ")+xBasicCfgFile+tr("?"));
-        if(sbox.exec() == QMessageBox::Save) {
+    QMessageBox sbox(QMessageBox::Question,tr("Saving xBasic.cfg File"),"",
+                     QMessageBox::Save | QMessageBox::Cancel);
+
+    sbox.setInformativeText(tr("Save new ")+xBasicCfgFile+tr("?"));
+
+    if(sbox.exec() == QMessageBox::Save) {
+        if(cfg.open(QIODevice::WriteOnly)) {
             cfg.write(barry);
             cfg.flush();
             cfg.close();

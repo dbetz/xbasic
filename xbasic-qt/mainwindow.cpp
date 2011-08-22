@@ -29,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     setupToolBars();
 
     /* main container */
-    setWindowTitle(tr("xBasic"));
+    setWindowTitle(tr("xBasic IDE"));
     QSplitter *vsplit = new QSplitter(this);
     setCentralWidget(vsplit);
 
@@ -139,7 +139,7 @@ void MainWindow::getApplicationSettings()
 
     if(!file.exists(xBasicCompiler))
     {
-        propDialog->show();
+        propDialog->showProperties();
     }
 
     /* get the separator used at startup */
@@ -170,7 +170,7 @@ void MainWindow::getApplicationSettings()
 
     if(!file.exists(xBasicCfgFile))
     {
-        propDialog->show();
+        propDialog->showProperties();
     }
     else
     {
@@ -249,6 +249,12 @@ void MainWindow::openFile(const QString &path)
         fileName = QFileDialog::getOpenFileName(this,
             tr("Open File"), "", "xBasic Files (*.bas)");
     openFileName(fileName);
+    if(projectFile.length() == 0) {
+        setProject();
+    }
+    else if(editorTabs->count() == 1) {
+        setProject();
+    }
 }
 
 void MainWindow::openFileName(QString fileName)
@@ -405,6 +411,12 @@ void MainWindow::setProject()
         updateProjectTree(fileName,text);
         updateReferenceTree(fileName,text);
     }
+    else {
+        delete projectModel;
+        projectModel = NULL;
+        delete referenceModel;
+        referenceModel = NULL;
+    }
 }
 
 void MainWindow::hardware()
@@ -543,12 +555,6 @@ int  MainWindow::runCompiler(QString copts)
 
     QProcess proc(this);
 
-    /* can use these signals, but can't collect error info in them.
-    connect(&proc,SIGNAL(error(QProcess::ProcessError)),this,
-            SLOT(compilerError(QProcess::ProcessError)));
-    connect(&proc,SIGNAL(finished(int,QProcess::ExitStatus)),this,
-            SLOT(compilerFinished(int,QProcess::ExitStatus)));
-    */
     proc.setWorkingDirectory(xBasicCompilerPath);
 
     proc.start(xBasicCompiler,args);
@@ -579,6 +585,12 @@ int  MainWindow::runCompiler(QString copts)
     }
     if(exitCode != 0)
     {
+        if(result.toLower().indexOf("helper") > 0) {
+            mbox.setInformativeText(result +
+                 "\nDid you set the right board type?" +
+                 "\nHUB and C3 set 80MHz clock." +
+                 "\nHUB96 and SSF set 96MHz clock.");
+        }
         mbox.setText(tr("xBasic Compiler Error"));
         mbox.exec();
         return -1;
@@ -749,6 +761,8 @@ void MainWindow::closeTab(int index)
 
 void MainWindow::changeTab(int index)
 {
+    if(editorTabs->count() == 1)
+        setProject();
     /*
     QString fileName = editorTabs->tabToolTip(index);
     QString text = editors->at(index)->toPlainText();
@@ -857,7 +871,14 @@ void MainWindow::connectButton()
 
 QString MainWindow::shortFileName(QString fileName)
 {
-    return fileName.mid(fileName.lastIndexOf(xBasicSeparator)+1);
+    QString rets;
+    if(fileName.indexOf('/') > -1)
+        rets = fileName.mid(fileName.lastIndexOf('/')+1);
+    else if(fileName.indexOf('\\') > -1)
+        rets = fileName.mid(fileName.lastIndexOf('\\')+1);
+    else
+        rets = fileName.mid(fileName.lastIndexOf(xBasicSeparator)+1);
+    return rets;
 }
 
 void MainWindow::initBoardTypes()
@@ -939,7 +960,7 @@ void MainWindow::setupFileMenu()
 
     projMenu->addAction(QIcon(":/images/treeproject.png"), tr("Set Project"), this, SLOT(setProject()), Qt::Key_F4);
     projMenu->addAction(QIcon(":/images/properties.png"), tr("Properties"), this, SLOT(properties()), Qt::Key_F5);
-    projMenu->addAction(QIcon(":/images/hardware.png"), tr("Hardware"), this, SLOT(hardware()), Qt::Key_F6);
+    projMenu->addAction(QIcon(":/images/hardware.png"), tr("Configuration"), this, SLOT(hardware()), Qt::Key_F6);
 
     QMenu *debugMenu = new QMenu(tr("&Debug"), this);
     menuBar()->addMenu(debugMenu);
@@ -1037,7 +1058,7 @@ void MainWindow::setupToolBars()
     QToolButton *btnProjectBoard = new QToolButton(this);
     addToolButton(propToolBar, btnProjectBoard, QString(":/images/hardware.png"));
     connect(btnProjectBoard,SIGNAL(clicked()),this,SLOT(hardware()));
-    btnProjectBoard->setToolTip(tr("Board Config"));
+    btnProjectBoard->setToolTip(tr("Configuration"));
 
     debugToolBar = addToolBar(tr("Debug"));
     QToolButton *btnDebugDebugTerm = new QToolButton(this);
