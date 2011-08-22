@@ -12,7 +12,6 @@
 
 /* configuration variables
 
-RAMSIZE		the total amount of RAM available to xbasic
 MAXCODE		the size of the bytecode staging buffer used by the compiler
 
 */
@@ -22,7 +21,6 @@ MAXCODE		the size of the bytecode staging buffer used by the compiler
 #define WORD_SIZE_32
 #define FAR_DATA
 #define FLASH_SPACE		const
-#define RAMSIZE         (256 * 1024)
 #define MAXCODE         (32 * 1024)
 #define NEED_STRCASECMP
 
@@ -31,7 +29,6 @@ MAXCODE		the size of the bytecode staging buffer used by the compiler
 #define WORD_SIZE_32
 #define FAR_DATA
 #define FLASH_SPACE		const
-#define RAMSIZE         (256 * 1024)
 #define MAXCODE         (32 * 1024)
 
 #endif
