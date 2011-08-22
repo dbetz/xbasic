@@ -99,6 +99,9 @@ again:
                 case MAIN_DEFINED:
                     ParseError(c, "all main code must be in the same place");
                     break;
+                case MAIN_IN_PROGRESS:
+                    // nothing to do
+                    break;
                 }
             }
             switch (tkn) {
@@ -390,12 +393,12 @@ void EndFunction(ParseContext *c)
             
         /* show the parse tree if requested */
         if (c->flags & COMPILER_DEBUG) {
-            VM_putchar('\n');
+            xbInfo(c->sys, "\n");
             PrintNode(c->function, 0);
             if ((d = c->dependencies) != NULL) {
-                VM_printf("dependencies:\n");
+                xbInfo(c->sys, "dependencies:\n");
                 for (; d != NULL; d = d->next)
-                    VM_printf("  %s\n", d->symbol->name);
+                    xbInfo(c->sys, "  %s\n", d->symbol->name);
             }
         }
     }
@@ -424,7 +427,7 @@ void EndFunction(ParseContext *c)
     c->function = NULL;
     
     /* empty the local heap */
-    c->nextLocal = c->heapTop;
+    xbLocalFreeAll(c->sys);
 }
 
 /* ParseEndDef - parse the 'END DEF' statement */
@@ -558,7 +561,7 @@ static void ParseDim(ParseContext *c)
 static Type *ParseVariableDecl(ParseContext *c, char *name, VMUVALUE *pSize)
 {
     Type *type = &c->integerType;
-    int isArray = VMFALSE;
+    int isArray = FALSE;
     Token tkn;
 
     /* parse the variable name */
@@ -567,7 +570,7 @@ static Type *ParseVariableDecl(ParseContext *c, char *name, VMUVALUE *pSize)
     
     /* handle arrays */
     if ((tkn = GetToken(c)) == '(') {
-        isArray = VMTRUE;
+        isArray = TRUE;
 
         /* check for an array with unspecified size */
         if ((tkn = GetToken(c)) == ')')
@@ -644,7 +647,7 @@ static VMVALUE ParseScalarInitializer(ParseContext *c)
     }
     
     /* reset the local heap and return the constant value */
-    c->nextLocal = c->heapTop;
+    xbLocalFreeAll(c->sys);
     return value;
 }
     
@@ -660,11 +663,11 @@ static VMUVALUE ParseArrayInitializers(ParseContext *c, Type *type, VMUVALUE siz
     /* handle a bracketed list of initializers */
     if ((tkn = GetToken(c)) == '{') {
         VMVALUE initializer;
-        int done = VMFALSE;
+        int done = FALSE;
         
         /* handle each line of initializers */
         while (!done) {
-            int lineDone = VMFALSE;
+            int lineDone = FALSE;
 
             /* look for the first non-blank line */
             while ((tkn = GetToken(c)) == T_EOL) {
@@ -707,11 +710,11 @@ static VMUVALUE ParseArrayInitializers(ParseContext *c, Type *type, VMUVALUE siz
                     
                 switch (tkn = GetToken(c)) {
                 case T_EOL:
-                    lineDone = VMTRUE;
+                    lineDone = TRUE;
                     break;
                 case '}':
-                    lineDone = VMTRUE;
-                    done = VMTRUE;
+                    lineDone = TRUE;
+                    done = TRUE;
                     break;
                 case ',':
                     break;
@@ -796,18 +799,6 @@ static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
     if (dataPtr + size > dataTop)
         ParseError(c, "insufficient object initializer space");
     memset(dataPtr, 0, size * sizeof(VMVALUE));
-}
-
-/* TypesCompatible - determine if two types are compatible */
-static int TypesCompatible(Type *type1, Type *type2)
-{
-    switch (type1->id) {
-    case TYPE_INTEGER:
-    case TYPE_BYTE:
-        return type2->id == TYPE_INTEGER || type2->id == TYPE_BYTE;
-    default:
-        return type1->id == type2->id;
-    }
 }
 
 /* ParseImpliedLetOrFunctionCall - parse an implied let statement or a function call */
@@ -958,7 +949,7 @@ static void ParseCase(ParseContext *c)
         do {
 
             /* parse the single value or begining of a range */
-            entry = (CaseListEntry *)LocalAlloc(c, sizeof(CaseListEntry));
+            entry = (CaseListEntry *)xbLocalAlloc(c->sys, sizeof(CaseListEntry));
             entry->fromExpr = ParseExpr(c);
             entry->next = NULL;
             *pNext = entry;
@@ -1173,7 +1164,7 @@ static void ParseAsm(ParseContext *c)
     
     /* store the code */
     length = c->cptr - start;
-    node->u.asmStatement.code = LocalAlloc(c, length);
+    node->u.asmStatement.code = xbLocalAlloc(c->sys, length);
     node->u.asmStatement.length = length;
     memcpy(node->u.asmStatement.code, start, length);
     AddNodeToList(c, &c->bptr->pNextStatement, node);
@@ -1239,7 +1230,7 @@ static void DefineLabel(ParseContext *c, char *name)
 
     /* allocate the label structure */
     if (!label) {
-        label = (Label *)LocalAlloc(c, sizeof(Label) + strlen(name));
+        label = (Label *)xbLocalAlloc(c->sys, sizeof(Label) + strlen(name));
         memset(label, 0, sizeof(Label));
         strcpy(label->name, name);
         label->state = LS_DEFINED;
@@ -1268,7 +1259,7 @@ static void ParseGoto(ParseContext *c)
 
     /* allocate the label structure */
     if (!label) {
-        label = (Label *)LocalAlloc(c, sizeof(Label) + strlen(c->token));
+        label = (Label *)xbLocalAlloc(c->sys, sizeof(Label) + strlen(c->token));
         memset(label, 0, sizeof(Label));
         strcpy(label->name, c->token);
         label->state = LS_UNDEFINED;
@@ -1368,7 +1359,7 @@ static void ParseInput(ParseContext *c)
 static void ParsePrint(ParseContext *c)
 {
     ParseTreeNode *devExpr, *expr;
-    int needNewline = VMTRUE;
+    int needNewline = TRUE;
     Token tkn;
 
     /* check for file output */
@@ -1388,14 +1379,14 @@ static void ParsePrint(ParseContext *c)
     while ((tkn = GetToken(c)) != T_EOL) {
         switch (tkn) {
         case ',':
-            needNewline = VMFALSE;
+            needNewline = FALSE;
             AddNodeToList(c, &c->bptr->pNextStatement, BuildHandlerCall(c, "printTab", devExpr, NULL));
             break;
         case ';':
-            needNewline = VMFALSE;
+            needNewline = FALSE;
             break;
         default:
-            needNewline = VMTRUE;
+            needNewline = TRUE;
             SaveToken(c, tkn);
             expr = ParseExpr(c);
             switch (expr->type->id) {
@@ -1459,14 +1450,14 @@ static ParseTreeNode *BuildHandlerFunctionCall(ParseContext *c, char *name, Pars
     callNode->u.functionCall.fcn = functionNode;
     callNode->u.functionCall.args = NULL;
     
-    actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+    actual = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
     actual->node = devExpr;
     actual->next = callNode->u.functionCall.args;
     callNode->u.functionCall.args = actual;
     ++callNode->u.functionCall.argc;
 
     if (expr) {
-        actual = (NodeListEntry *)LocalAlloc(c, sizeof(NodeListEntry));
+        actual = (NodeListEntry *)xbLocalAlloc(c->sys, sizeof(NodeListEntry));
         actual->node = expr;
         actual->next = callNode->u.functionCall.args;
         callNode->u.functionCall.args = actual;
@@ -1483,7 +1474,7 @@ void CheckLabels(ParseContext *c)
     Label *label;
     for (label = c->function->u.functionDefinition.labels; label != NULL; label = label->next) {
         if (label->fixups)
-            Fatal(c->sys, "undefined label: %s", label->name);
+            Fatal(c, "undefined label: %s", label->name);
     }
 }
 
@@ -1492,9 +1483,9 @@ void DumpLabels(ParseContext *c)
 {
     Label *label;
     if (c->function->u.functionDefinition.labels) {
-        VM_printf("labels:\n");
+        xbInfo(c->sys, "labels:\n");
         for (label = c->function->u.functionDefinition.labels; label != NULL; label = label->next)
-            VM_printf("  %08x %s\n", label->offset, label->name);
+            xbInfo(c->sys, "  %08x %s\n", label->offset, label->name);
     }
 }
 
@@ -1502,7 +1493,7 @@ void DumpLabels(ParseContext *c)
 static void PushBlock(ParseContext *c, BlockType type, ParseTreeNode *node)
 {
     if (++c->bptr >= c->btop)
-        Fatal(c->sys, "statements too deeply nested");
+        Fatal(c, "statements too deeply nested");
     c->bptr->type = type;
     c->bptr->node = node;
 }

@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+
 #include "db_config.h"
 #include "db_image.h"
 #include "db_system.h"
@@ -41,13 +42,13 @@ static ConfigSymbol configSymbols[] = {
 static BoardConfig *boardConfigs = NULL;
 
 static int SkipSpaces(LineBuf *buf);
-static char *NextToken(LineBuf *buf, char *termSet, int *pTerm);
+static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm);
 static int ParseNumericExpr(LineBuf *buf, char *token, int *pValue);
 static int DoOp(LineBuf *buf, int op, int left, int right);
-static char *CopyString(LineBuf *buf, char *str);
-static void Error(LineBuf *buf, char *fmt, ...);
+static char *CopyString(LineBuf *buf, const char *str);
+static void Error(LineBuf *buf, const char *fmt, ...);
 
-static BoardConfig *NewBoardConfig(char *name)
+static BoardConfig *NewBoardConfig(const char *name)
 {
     BoardConfig *config;
     if (!(config = (BoardConfig *)malloc(sizeof(BoardConfig) + strlen(name))))
@@ -57,7 +58,7 @@ static BoardConfig *NewBoardConfig(char *name)
     return config;
 }
 
-BoardConfig *GetBoardConfig(char *name)
+BoardConfig *GetBoardConfig(const char *name)
 {
     BoardConfig *config;
     for (config = boardConfigs; config != NULL; config = config->next)
@@ -66,7 +67,7 @@ BoardConfig *GetBoardConfig(char *name)
     return NULL;
 }
 
-static Section *NewSection(char *name)
+static Section *NewSection(const char *name)
 {
     Section *section;
     if (!(section = (Section *)malloc(sizeof(Section) + strlen(name))))
@@ -76,7 +77,7 @@ static Section *NewSection(char *name)
     return section;
 }
 
-Section *GetSection(BoardConfig *config, char *name)
+Section *GetSection(BoardConfig *config, const char *name)
 {
     Section *section;
     for (section = config->sections; section != NULL; section = section->next)
@@ -86,7 +87,7 @@ Section *GetSection(BoardConfig *config, char *name)
 }
 
 /* ParseConfigurationFile - parse a configuration file */
-void ParseConfigurationFile(char *path)
+void ParseConfigurationFile(System *sys, const char *path)
 {
     char text[MAXLINE], data[MAXLINE], *tag, *value;
     BoardConfig **pNextConfig = &boardConfigs;
@@ -97,13 +98,13 @@ void ParseConfigurationFile(char *path)
     int iValue;
     FILE *fp;
     int ch;
-    
-    if (!(fp = VM_fopen(path, "r")))
+
+    if (!(fp = xbOpenFileInPath(sys, path, "r")))
         return;
-        
+
     strcpy(text, "hub");
     strcpy(data, "hub");
-        
+
     while (fgets(buf.lineBuf, sizeof(buf.lineBuf), fp)) {
         buf.linePtr = buf.lineBuf;
         ++buf.lineNumber;
@@ -245,7 +246,7 @@ void ParseConfigurationFile(char *path)
             break;
         }
     }
-            
+
     if (config) {
         if (!(section = NewSection("hub")))
             Error(&buf, "insufficient memory");
@@ -270,27 +271,27 @@ static int SkipSpaces(LineBuf *buf)
     return *buf->linePtr;
 }
 
-static char *NextToken(LineBuf *buf, char *termSet, int *pTerm)
+static char *NextToken(LineBuf *buf, const char *termSet, int *pTerm)
 {
     char *token;
     int ch;
-    
+
     /* skip leading spaces */
     if (!SkipSpaces(buf))
         return NULL;
-    
+
     /* collect the token */
     token = buf->linePtr;
     while ((ch = *buf->linePtr) != '\0' && ch != '\n' && !isspace(ch) && !strchr(termSet, ch))
         ++buf->linePtr;
-    
+
     /* return the terminator character */
     *pTerm = ch;
-    
+
     /* terminate the token */
     if (*buf->linePtr != '\0')
         *buf->linePtr++ = '\0';
-        
+
     /* return the token or NULL if at the end of the line */
     return *token == '\0' ? NULL : token;
 }
@@ -403,7 +404,7 @@ static int DoOp(LineBuf *buf, int op, int left, int right)
     return left;
 }
 
-static char *CopyString(LineBuf *buf, char *str)
+static char *CopyString(LineBuf *buf, const char *str)
 {
 	char *copy = (char *)malloc(strlen(str) + 1);
 	if (!copy)
@@ -412,7 +413,7 @@ static char *CopyString(LineBuf *buf, char *str)
 	return copy;
 }
 
-static void Error(LineBuf *buf, char *fmt, ...)
+static void Error(LineBuf *buf, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);

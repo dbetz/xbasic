@@ -14,23 +14,28 @@
 
 /* prototypes for local functions */
 static uint8_t *MapAddress(Interpreter *i, VMUVALUE addr);
-static VMUVALUE UnmapAddress(Interpreter *i, uint8_t *p);
 static VMVALUE LoadValue(Interpreter *i, VMUVALUE addr);
 static VMVALUE LoadByteValue(Interpreter *i, VMUVALUE addr);
 static void StoreValue(Interpreter *i, VMUVALUE addr, VMVALUE value);
 static void StoreByteValue(Interpreter *i, VMUVALUE addr, VMVALUE value);
 static void DoTrap(Interpreter *i, int op);
-static void PrintInteger(Interpreter *i, VMVALUE value);
-static void PrintString(Interpreter *i, VMVALUE value);
-static void PrintTab(Interpreter *i);
 static void PrintC(Interpreter *i, int ch);
 
 /* InitInterpreter - initialize the interpreter */
-uint8_t *InitInterpreter(Interpreter *i, size_t stackSize)
+Interpreter *InitInterpreter(System *sys, ImageHdr *image)
 {
-    i->stack = (VMVALUE *)((uint8_t *)i + sizeof(Interpreter));
-    i->stackTop = i->stack + stackSize;
-    return (uint8_t *)i->stackTop;
+    Interpreter *i;
+    
+    if (!(i = (Interpreter *)xbGlobalAlloc(sys, sizeof(Interpreter))))
+        return NULL;
+        
+    if (!(i->stack = (VMVALUE *)xbGlobalAlloc(sys, image->stackSize * sizeof(VMVALUE))))
+        return NULL;
+        
+    i->image = image;
+    i->stackTop = i->stack + image->stackSize;
+    
+    return i;
 }
 
 /* Execute - execute the main code */
@@ -49,7 +54,7 @@ int Execute(Interpreter *i, ImageHdr *image)
     i->linePos = 0;
 
     if (setjmp(i->errorTarget))
-        return VMFALSE;
+        return FALSE;
 
     for (;;) {
 #if 0
@@ -58,7 +63,7 @@ int Execute(Interpreter *i, ImageHdr *image)
 #endif
         switch (VMCODEBYTE(i->pc++)) {
         case OP_HALT:
-            return VMTRUE;
+            return TRUE;
         case OP_BRT:
             for (tmp = 0, cnt = sizeof(VMUVALUE); --cnt >= 0; )
                 tmp = (tmp << 8) | VMCODEBYTE(i->pc++);
@@ -95,7 +100,7 @@ int Execute(Interpreter *i, ImageHdr *image)
             i->pc += tmp;
             break;
         case OP_NOT:
-            i->tos = (i->tos ? VMFALSE : VMTRUE);
+            i->tos = (i->tos ? FALSE : TRUE);
             break;
         case OP_NEG:
             i->tos = -i->tos;
@@ -145,27 +150,27 @@ int Execute(Interpreter *i, ImageHdr *image)
             break;
         case OP_LT:
             tmp = Pop(i);
-            i->tos = (tmp < i->tos ? VMTRUE : VMFALSE);
+            i->tos = (tmp < i->tos ? TRUE : FALSE);
             break;
         case OP_LE:
             tmp = Pop(i);
-            i->tos = (tmp <= i->tos ? VMTRUE : VMFALSE);
+            i->tos = (tmp <= i->tos ? TRUE : FALSE);
             break;
         case OP_EQ:
             tmp = Pop(i);
-            i->tos = (tmp == i->tos ? VMTRUE : VMFALSE);
+            i->tos = (tmp == i->tos ? TRUE : FALSE);
             break;
         case OP_NE:
             tmp = Pop(i);
-            i->tos = (tmp != i->tos ? VMTRUE : VMFALSE);
+            i->tos = (tmp != i->tos ? TRUE : FALSE);
             break;
         case OP_GE:
             tmp = Pop(i);
-            i->tos = (tmp >= i->tos ? VMTRUE : VMFALSE);
+            i->tos = (tmp >= i->tos ? TRUE : FALSE);
             break;
         case OP_GT:
             tmp = Pop(i);
-            i->tos = (tmp > i->tos ? VMTRUE : VMFALSE);
+            i->tos = (tmp > i->tos ? TRUE : FALSE);
             break;
         case OP_LIT:
             for (tmp = 0, cnt = sizeof(VMUVALUE); --cnt >= 0; )
@@ -273,23 +278,6 @@ static uint8_t *MapAddress(Interpreter *i, VMUVALUE addr)
     return NULL; // not reached
 }
 
-static VMUVALUE UnmapAddress(Interpreter *i, uint8_t *p)
-{
-    ImageSection *section = i->image->sections;
-    int cnt = i->image->sectionCount;
-    while (--cnt >= 0) {
-        uint8_t *start = section->data;
-        if (p >= start && p < start + 0x10000000) {
-            if (p > start + section->fileSection->size)
-                Abort(i, "address error");
-            return section->fileSection->base + (p - start);
-        }
-        ++section;
-    }
-    Abort(i, "address error");
-    return 0; // not reached
-}
-
 static VMVALUE LoadValue(Interpreter *i, VMUVALUE addr)
 {
     VMVALUE *p = (VMVALUE *)MapAddress(i, addr);
@@ -344,13 +332,13 @@ void ShowStack(Interpreter *i)
 {
     VMVALUE *p;
     if (i->sp < i->stackTop) {
-        VM_printf(" %d", i->tos);
+        xbInfo(i->sys, " %d", i->tos);
         for (p = i->sp; p < i->stackTop - 1; ++p) {
             if (p == i->fp)
-                VM_printf(" <fp>");
-            VM_printf(" %d", *p);
+                xbInfo(i->sys, " <fp>");
+            xbInfo(i->sys, " %d", *p);
         }
-        VM_printf("\n");
+        xbInfo(i->sys, "\n");
     }
 }
 
@@ -359,23 +347,13 @@ void StackOverflow(Interpreter *i)
     Abort(i, "stack overflow");
 }
 
-void Warn(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    VM_printf("warning: ");
-    VM_vprintf(fmt, ap);
-    VM_putchar('\n');
-    va_end(ap);
-}
-
 void Abort(Interpreter *i, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    VM_printf("abort: ");
-    VM_vprintf(fmt, ap);
-    VM_putchar('\n');
+    xbError(i->sys, "abort: ");
+    xbErrorV(i->sys, fmt, ap);
+    xbError(i->sys, "\n");
     va_end(ap);
     if (i)
         longjmp(i->errorTarget, 1);

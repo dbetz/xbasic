@@ -14,7 +14,7 @@ CC=gcc
 ECHO=echo
 MKDIR=mkdir -p
 
-CFLAGS=-I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
+CFLAGS=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
 SPINFLAGS=-Ogxr
 
@@ -79,26 +79,28 @@ clean-for-release:
 #####################
 
 COMOBJS=\
+$(OBJDIR)/xb_api.o \
 $(OBJDIR)/db_compiler.o \
 $(OBJDIR)/db_expr.o \
 $(OBJDIR)/db_generate.o \
-$(OBJDIR)/db_wrimage.o \
 $(OBJDIR)/db_scan.o \
 $(OBJDIR)/db_statement.o \
 $(OBJDIR)/db_symbols.o \
 $(OBJDIR)/db_types.o \
-$(OBJDIR)/db_config.o
+$(OBJDIR)/db_wrimage.o
 
 INTOBJS=\
+$(OBJDIR)/db_runtime.o \
 $(OBJDIR)/db_vmfcn.o \
 $(OBJDIR)/db_vmimage.o \
 $(OBJDIR)/db_vmint.o \
-$(OBJDIR)/db_runtime.o
+$(OBJDIR)/db_platform.o
 
 COMMONOBJS=\
+$(OBJDIR)/db_config.o \
 $(OBJDIR)/db_vmdebug.o \
 $(OBJDIR)/db_system.o \
-$(OBJDIR)/db_platform.o
+$(OBJDIR)/mem_malloc.o
 
 LOADEROBJS=\
 $(OBJDIR)/db_loader.o \
@@ -113,8 +115,8 @@ $(OBJDIR)/xbasic_vm.o
 XBCOMOBJS=\
 $(OBJDIR)/xbcom.o \
 $(COMOBJS) \
-$(COMMONOBJS) \
-$(LOADEROBJS)
+$(LOADEROBJS) \
+$(COMMONOBJS)
 
 XBINTOBJS=\
 $(OBJDIR)/xbint.o \
@@ -125,14 +127,17 @@ XLOADOBJS=\
 $(OBJDIR)/xload.o \
 $(LOADEROBJS) \
 $(OBJDIR)/db_config.o \
-$(OBJDIR)/db_platform.o
+$(OBJDIR)/db_system.o
 
 HDRS=\
 $(SRCDIR)/compiler/db_compiler.h \
+$(SRCDIR)/compiler/xb_api.h \
+$(SRCDIR)/common/db_config.h \
+$(SRCDIR)/common/db_image.h \
+$(SRCDIR)/common/db_system.h \
 $(SRCDIR)/runtime/db_vm.h \
 $(SRCDIR)/runtime/db_vmdebug.h \
-$(SRCDIR)/common/db_image.h \
-$(SRCDIR)/common/db_config.h
+$(SRCDIR)/runtime/db_vmimage.h
 
 ############################################
 # SOURCES NEEDED BY THE VISUAL C++ PROJECT #

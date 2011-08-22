@@ -69,18 +69,18 @@ int CompareTypes(Type *type1, Type *type2)
             match = CompareTypes(type1->u.arrayInfo.elementType, type2->u.arrayInfo.elementType);
             break;
         default:
-            match = VMTRUE;
+            match = TRUE;
             break;
         }
     }
 
     /* check for compatible integer types */
     else if (IsIntegerType(type1) && IsIntegerType(type2))
-         match = VMTRUE;
+         match = TRUE;
          
     /* no type id match */
     else
-        match = VMFALSE;
+        match = FALSE;
 
     return match;
 }

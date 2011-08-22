@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include "db_system.h"
 #include "db_vmimage.h"
 
 /* forward type declarations */
@@ -20,6 +21,7 @@ typedef void IntrinsicFcn(Interpreter *i);
 
 /* interpreter state structure */
 struct Interpreter {
+    System *sys;
     ImageHdr *image;
     jmp_buf errorTarget;
     VMVALUE *stack;
@@ -53,22 +55,25 @@ struct Interpreter {
 #define Top(i)          (*(i)->sp)
 #define Drop(i, n)      ((i)->sp += (n))
 
+/* prototypes for xbint.c */
+void Fatal(System *sys, const char *fmt, ...);
+
+/* prototypes from db_vmimage.c */
+ImageHdr *LoadImage(System *sys, const char *name);
+
+/* prototypes from db_vmint.c */
+Interpreter *InitInterpreter(System *sys, ImageHdr *image);
+int Execute(Interpreter *i, ImageHdr *image);
+void Abort(Interpreter *i, const char *fmt, ...);
+void StackOverflow(Interpreter *i);
+void ShowStack(Interpreter *i);
+
 /* prototypes and variables from db_vmfcn.c */
 extern IntrinsicFcn * FLASH_SPACE Intrinsics[];
 extern int IntrinsicCount;
 
-/* prototypes from db_vmint.c */
-uint8_t *InitInterpreter(Interpreter *i, size_t stackSize);
-int Execute(Interpreter *i, ImageHdr *image);
-void Warn(const char *fmt, ...);                    /* fmt in FLASH_SPACE */
-void Abort(Interpreter *i, const char *fmt, ...);   /* fmt in FLASH_SPACE */
-void StackOverflow(Interpreter *i);
-void ShowStack(Interpreter *i);
-
-/* prototypes from db_vmimage.c */
-ImageHdr *LoadImage(System *sys);
-
 void VM_getline(char *buf, int size);
-int ImageFileRead(uint8_t *buf, int size);
+int VM_getchar(void);
+void VM_putchar(int ch);
 
 #endif

@@ -3,7 +3,6 @@
 #include <string.h>
 #include "db_loader.h"
 #include "db_packet.h"
-#include "db_system.h"
 #include "PLoadLib.h"
 #include "osint.h"
 
@@ -87,7 +86,7 @@ extern int flash_loader_size;
 extern uint8_t xbasic_vm_array[];
 extern int xbasic_vm_size;
 
-static int ReadCogImage(char *name, uint8_t *buf, int *pSize);
+static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize);
 static FILE *OpenAndProbeFile(char *path, char *buf, int *pSize, int *pCnt, int *pType);
 static int WriteFileToMemory(char *path);
 static int WriteBuffer(uint8_t *buf, int size);
@@ -100,7 +99,7 @@ int InitPort(char *port)
 	return serial_init(port, BAUD_RATE);
 }
 
-int LoadImage(BoardConfig *config, char *port, char *path)
+int LoadImage(System *sys, BoardConfig *config, char *port, char *path)
 {    
 	SpinHdr *hdr = (SpinHdr *)serial_helper_array;
     SpinObj *obj = (SpinObj *)(serial_helper_array + hdr->objstart);
@@ -133,7 +132,7 @@ int LoadImage(BoardConfig *config, char *port, char *path)
     /* load the cache driver */
     if (config->cacheDriver) {
         VMUVALUE params[3];
-        if (!ReadCogImage(config->cacheDriver, cacheDriverImage, &imageSize))
+        if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
             return Error("reading cache driver image failed: %s", config->cacheDriver);
 		printf("Loading cache driver\n");
         params[0] = config->cacheSize;
@@ -163,7 +162,7 @@ int LoadImage(BoardConfig *config, char *port, char *path)
 	return TRUE;
 }
 
-int WriteHubLoaderToEEPROM(BoardConfig *config, char *port, char *path)
+int WriteHubLoaderToEEPROM(System *sys, BoardConfig *config, char *port, char *path)
 {
 	SpinHdr *hdr = (SpinHdr *)hub_loader_array;
     SpinObj *obj = (SpinObj *)(hub_loader_array + hdr->objstart);
@@ -216,7 +215,7 @@ int WriteHubLoaderToEEPROM(BoardConfig *config, char *port, char *path)
 	return TRUE;
 }
 
-int WriteFlashLoaderToEEPROM(BoardConfig *config, char *port)
+int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port)
 {
 	SpinHdr *hdr = (SpinHdr *)flash_loader_array;
     SpinObj *obj = (SpinObj *)(flash_loader_array + hdr->objstart);
@@ -224,7 +223,7 @@ int WriteFlashLoaderToEEPROM(BoardConfig *config, char *port)
     uint8_t cacheDriverImage[COG_IMAGE_MAX];
     int imageSize, chksum, i;
 	
-    if (!ReadCogImage(config->cacheDriver, cacheDriverImage, &imageSize))
+    if (!ReadCogImage(sys, config->cacheDriver, cacheDriverImage, &imageSize))
         return Error("reading cache driver image failed: %s", config->cacheDriver);
         
     /* patch serial helper for clock mode and frequency */
@@ -263,13 +262,13 @@ int RunLoadedProgram(int step)
 	return SendPacket(TYPE_RUN, (uint8_t *)&arg, sizeof(VMUVALUE));
 }
 
-static int ReadCogImage(char *name, uint8_t *buf, int *pSize)
+static int ReadCogImage(System *sys, char *name, uint8_t *buf, int *pSize)
 {
-    FILE *fp;
-    if (!(fp = VM_fopen(name, "rb")))
+    void *file;
+    if (!(file = xbOpenFileInPath(sys, name, "rb")))
         return Error("can't open cache driver: %s", name);
-    *pSize = fread(buf, 1, COG_IMAGE_MAX, fp);
-    fclose(fp);
+    *pSize = xbReadFile(file, buf, COG_IMAGE_MAX);
+    xbCloseFile(file);
     return *pSize > 0;
 }
 
@@ -396,5 +395,5 @@ static int Error(char *fmt, ...)
     vprintf(fmt, ap);
     putchar('\n');
     va_end(ap);
-    return VMFALSE;
+    return FALSE;
 }

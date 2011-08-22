@@ -233,7 +233,7 @@ static void code_select_statement(ParseContext *c, ParseTreeNode *node)
     
     /* push a block to handle the select */
     PushGenBlock(c, GEN_BLOCK_SELECT);
-    c->gptr->u.selectBlock.first = VMTRUE;
+    c->gptr->u.selectBlock.first = TRUE;
     c->gptr->u.selectBlock.nxt = 0;
     c->gptr->u.selectBlock.end = 0;
     
@@ -467,7 +467,7 @@ static void code_asm_statement(ParseContext *c, ParseTreeNode *node)
 {
     int length = node->u.asmStatement.length;
     if (c->cptr + length >= c->ctop)
-        Fatal(c->sys, "Bytecode buffer overflow");
+        Fatal(c, "Bytecode buffer overflow");
     memcpy(c->cptr, node->u.asmStatement.code, length);
     c->cptr += length;
 }
@@ -629,7 +629,7 @@ static void code_index(ParseContext *c, PValOp fcn, PVAL *pv)
 static void PushGenBlock(ParseContext *c, BlockType type)
 {
     if (++c->gptr >= c->gtop)
-        Fatal(c->sys, "statements too deeply nested");
+        Fatal(c, "statements too deeply nested");
     c->gptr->type = type;
 }
 
@@ -650,7 +650,7 @@ VMUVALUE putcbyte(ParseContext *c, int b)
 {
     VMUVALUE addr = codeaddr(c);
     if (c->cptr >= c->ctop)
-        Fatal(c->sys, "Bytecode buffer overflow");
+        Fatal(c, "Bytecode buffer overflow");
     *c->cptr++ = b;
     return addr;
 }
@@ -662,7 +662,7 @@ VMUVALUE putcword(ParseContext *c, VMVALUE w)
     uint8_t *p;
     int cnt = sizeof(VMVALUE);
     if (c->cptr + sizeof(VMVALUE) > c->ctop)
-        Fatal(c->sys, "Bytecode buffer overflow");
+        Fatal(c, "Bytecode buffer overflow");
      c->cptr += sizeof(VMVALUE);
      p = c->cptr;
      while (--cnt >= 0) {

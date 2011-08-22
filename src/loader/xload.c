@@ -20,13 +20,21 @@
 static void Usage(void);
 static void ConstructFileName(const char *infile, char *outfile, char *ext);
 
+static void MyInfo(System *sys, const char *fmt, va_list ap);
+static void MyError(System *sys, const char *fmt, va_list ap);
+static SystemOps myOps = {
+    MyInfo,
+    MyError
+};
+
 int main(int argc, char *argv[])
 {
     char *infile = NULL, fullName[FILENAME_MAX];
-    char *port, *board;
+    int singleStepMode = FALSE;
+    int terminalMode = FALSE;
     BoardConfig *config;
-    int singleStepMode = VMFALSE;
-    int terminalMode = VMFALSE;
+    char *port, *board;
+    System sys;
     int i;
 
     /* get the environment settings */
@@ -34,8 +42,6 @@ int main(int argc, char *argv[])
         port = DEF_PORT;
     if (!(board = getenv("BOARD")))
         board = DEF_BOARD;
-
-    ParseConfigurationFile("xbasic.cfg");
 
     /* get the arguments */
     for(i = 1; i < argc; ++i) {
@@ -72,10 +78,10 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 's':
-                singleStepMode = VMTRUE;
+                singleStepMode = TRUE;
                 break;
             case 't':
-                terminalMode = VMTRUE;
+                terminalMode = TRUE;
                 break;
             default:
                 Usage();
@@ -91,6 +97,9 @@ int main(int argc, char *argv[])
         }
     }
     
+    sys.ops = &myOps;
+    ParseConfigurationFile(&sys, "xbasic.cfg");
+
     /* make sure an input file was specified */
     if (!infile)
         Usage();
@@ -107,7 +116,7 @@ int main(int argc, char *argv[])
     }
 
     /* load the compiled image */
-    if (!LoadImage(config, port, fullName)) {
+    if (!LoadImage(&sys, config, port, fullName)) {
         fprintf(stderr, "error: load failed\n");
         return 1;
     }
@@ -146,4 +155,14 @@ static void ConstructFileName(const char *infile, char *outfile, char *ext)
     strcpy(outfile, infile);
     if (!end || strchr(end, '/') || strchr(end, '\\'))
         strcat(outfile, ext);
+}
+
+static void MyInfo(System *sys, const char *fmt, va_list ap)
+{
+    vfprintf(stdout, fmt, ap);
+}
+
+static void MyError(System *sys, const char *fmt, va_list ap)
+{
+    vfprintf(stderr, fmt, ap);
 }

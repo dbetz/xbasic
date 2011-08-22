@@ -2,36 +2,44 @@
 #define __DB_SYSTEM_H__
 
 #include <stdarg.h>
-#include <setjmp.h>
-#include "db_config.h"
 
-#define MAXLINE 128
+#ifndef TRUE
+#define TRUE    1
+#define FALSE   0
+#endif
 
+/* forward typedefs */
+typedef struct System System;
+
+/* system operations table */
 typedef struct {
-    jmp_buf errorTarget;    /* error target */
-    uint8_t *freeSpace;     /* base of free space */
-    uint8_t *freeMark;      /* mark the end of the permanently allocated space */
-    uint8_t *freeNext;      /* next free space available */
-    uint8_t *freeTop;       /* top of free space */
-    char lineBuf[MAXLINE];  /* line buffer */
-    char *linePtr;          /* pointer to the current character */
-} System;
+    void (*info)(System *sys, const char *fmt, va_list ap);
+    void (*error)(System *sys, const char *fmt, va_list ap);
+} SystemOps;
 
-void InitFreeSpace(System *sys, uint8_t *space, size_t size);
-void MarkFreeSpace(System *sys);
-void ResetFreeSpace(System *sys);
-uint8_t *AllocateFreeSpace(System *sys, size_t size);
-uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize);
-void VM_printf(const char *fmt, ...);
-void VM_vprintf(const char *fmt, va_list ap);
-void Fatal(System *sys, char *fmt, ...);
+/* system interface */
+struct System {
+    SystemOps   *ops;
+};
 
-int VM_AddToPath(const char *p);
-int VM_AddEnvironmentPath(void);
-FILE *VM_fopen(const char *name, const char *mode);
-FILE *VM_CreateTmpFile(const char *name, const char *mode);
-void VM_RemoveTmpFile(const char *name);
-int VM_getchar(void);
-void VM_putchar(int ch);
+#define xbInfoV(sys, fmt, args)     ((*(sys)->ops->info)((sys), (fmt), (args)))
+#define xbErrorV(sys, fmt, args)    ((*(sys)->ops->error)((sys), (fmt), (args)))
+
+void xbInfo(System *sys, const char *fmt, ...);
+void xbError(System *sys, const char *fmt, ...);
+int xbAddToPath(const char *p);
+int xbAddEnvironmentPath(void);
+void *xbOpenFileInPath(System *sys, const char *name, const char *mode);
+void *xbOpenFile(System *sys, const char *name, const char *mode);
+int xbCloseFile(void *file);
+char *xbGetLine(void *file, char *buf, size_t size);
+size_t xbReadFile(void *file, void *buf, size_t size);
+size_t xbWriteFile(void *file, const void *buf, size_t size);
+int xbSeekFile(void *file, long offset, int whence);
+void *xbCreateTmpFile(System *sys, const char *name, const char *mode);
+int xbRemoveTmpFile(System *sys, const char *name);
+void *xbGlobalAlloc(System *sys, size_t size);
+void *xbLocalAlloc(System *sys, size_t size);
+void xbLocalFreeAll(System *sys);
 
 #endif

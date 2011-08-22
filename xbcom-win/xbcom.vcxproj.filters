@@ -66,13 +66,7 @@
     <ClCompile Include="..\src\common\db_config.c">
       <Filter>Source Files\common</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\common\db_platform.c">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
     <ClCompile Include="..\src\common\db_system.c">
-      <Filter>Source Files\common</Filter>
-    </ClCompile>
-    <ClCompile Include="..\src\common\osint_win32.c">
       <Filter>Source Files\common</Filter>
     </ClCompile>
     <ClCompile Include="..\src\loader\db_loader.c">
@@ -95,6 +89,15 @@
     </ClCompile>
     <ClCompile Include="..\obj\cygwin\xbasic_vm.c">
       <Filter>Source Files\drivers</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\osint_win32.c">
+      <Filter>Source Files\loader</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\compiler\xb_api.c">
+      <Filter>Source Files\compiler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\common\mem_malloc.c">
+      <Filter>Source Files\common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -121,6 +124,12 @@
     </ClInclude>
     <ClInclude Include="..\src\loader\PLoadLib.h">
       <Filter>Source Files\loader</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\compiler\xb_api.h">
+      <Filter>Source Files\compiler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\common\mem_malloc.h">
+      <Filter>Source Files\common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

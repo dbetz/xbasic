@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include "db_system.h"
 #include "db_compiler.h"
 #include "db_loader.h"
 #include "db_packet.h"
+#include "mem_malloc.h"
 
 /* defaults */
 #if defined(CYGWIN) || defined(WIN32)
@@ -19,26 +19,27 @@
 #endif
 #define DEF_BOARD   "c3"
 
-FAR_DATA uint8_t space[RAMSIZE];
-
 static void Usage(void);
 static void ConstructOutputName(const char *infile, char *outfile, char *ext);
-static void SourceRewind(void *cookie);
-static int SourceGetLine(void *cookie, char *buf, int len);
+
+static void MyInfo(System *sys, const char *fmt, va_list ap);
+static void MyError(System *sys, const char *fmt, va_list ap);
+static SystemOps myOps = {
+    MyInfo,
+    MyError
+};
 
 int main(int argc, char *argv[])
 {
     char *infile = NULL, outfile[FILENAME_MAX];
     char *port, *board, *p;
     BoardConfig *config;
-    int writeEepromLoader = VMFALSE;
-    int runImage = VMFALSE;
-    int terminalMode = VMFALSE;
-    int step = VMFALSE;
+    int writeEepromLoader = FALSE;
+    int runImage = FALSE;
+    int terminalMode = FALSE;
+    int step = FALSE;
     int compilerFlags = 0;
-    ParseContext *c;
-    System sys;
-    FILE *ifp;
+    System *sys;
     int i;
     
     /* get the environment settings */
@@ -82,16 +83,16 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 'e':
-                writeEepromLoader = VMTRUE;
+                writeEepromLoader = TRUE;
                 break;
             case 's':
-                step = VMTRUE;
+                step = TRUE;
                 // fall through
             case 'r':
-                runImage = VMTRUE;
+                runImage = TRUE;
                 break;
             case 't':
-                terminalMode = VMTRUE;
+                terminalMode = TRUE;
                 break;
             case 'd':
                 compilerFlags |= COMPILER_DEBUG;
@@ -106,7 +107,7 @@ int main(int argc, char *argv[])
                     p = argv[i];
                 else
                     Usage();
-                VM_AddToPath(p);
+                xbAddToPath(p);
                 break;
             default:
                 Usage();
@@ -122,59 +123,50 @@ int main(int argc, char *argv[])
         }
     }
     
-    /* add the path from 'XB_INC' */
-    VM_AddEnvironmentPath();
-    
-    ParseConfigurationFile("xbasic.cfg");
-
     /* make sure an input file was specified */
     if (!infile)
         Usage();
-        
+
+    /* create the output file name */
+    ConstructOutputName(infile, outfile, ".bai");
+    
     /* make sure -e and -r aren't used together */
     if (writeEepromLoader && runImage) {
         fprintf(stderr, "error: writing the eeprom loader and running the program are mutually exclusive\n");
         return 1;
     }
         
+    /* initialize the memory allocator */
+    if (!(sys = MemInit())) {
+        fprintf(stderr, "error: memory initialization failed\n");
+        return 1;
+    }
+    sys->ops = &myOps;
+        
+    /* add the XB_INC environment path */
+    xbAddEnvironmentPath();
+    
+    /* load the board configuration file */
+    ParseConfigurationFile(sys, "xbasic.cfg");
+
     /* setup for the selected board */
     if (!(config = GetBoardConfig(board))) {
         fprintf(stderr, "error: no board type: %s\n", board);
         return 1;
     }
     
-    /* open the input file */
-    if (!(ifp = fopen(infile, "r"))) {
-        fprintf(stderr, "error: can't open '%s'\n", infile);
-        return 1;
-    }
-    
-    /* create the output file name */
-    ConstructOutputName(infile, outfile, ".bai");
-    
-    /* initialize the memory allocator */
-    InitFreeSpace(&sys, space, sizeof(space));
-
     /* initialize the compiler */
-    if (!(c = InitCompiler(&sys, config, MAXCODE))) {
+    if (!xbInit(sys, config, MAXCODE)) {
         fprintf(stderr, "error: compiler initialization failed\n");
         return 1;
     }
-    c->flags = compilerFlags;
-    
-    /* setup source input */
-    c->mainFile.u.main.rewind = SourceRewind;
-    c->mainFile.u.main.getLine = SourceGetLine;
-    c->mainFile.u.main.getLineCookie = ifp;
-    
+        
     /* compile the source file */
-    if (!Compile(c, outfile)) {
-        fprintf(stderr, "error: compile failed\n");
+    if (!xbCompile(infile, outfile, compilerFlags))
         return 1;
-    }
-    
-    /* close the files and remove the data section temporary file */
-    fclose(ifp);
+        
+    /* free allocated memory */
+    MemFree(sys);
     
     /* open the port if necessary */
     if (runImage || writeEepromLoader || terminalMode) {
@@ -186,7 +178,7 @@ int main(int argc, char *argv[])
     
     /* load the compiled image if necessary */
     if (runImage || (writeEepromLoader && config->cacheDriver)) {
-        if (!LoadImage(config, port, outfile)) {
+        if (!LoadImage(sys, config, port, outfile)) {
             fprintf(stderr, "error: load failed\n");
             return 1;
         }
@@ -195,9 +187,9 @@ int main(int argc, char *argv[])
     /* flash the program into eeprom if requested */
     if (writeEepromLoader) {
         if (config->cacheDriver)
-            WriteFlashLoaderToEEPROM(config, port);
+            WriteFlashLoaderToEEPROM(sys, config, port);
         else
-            WriteHubLoaderToEEPROM(config, port, outfile);
+            WriteHubLoaderToEEPROM(sys, config, port, outfile);
     }
     
     /* run the loaded image if requested */
@@ -222,7 +214,6 @@ static void Usage(void)
 usage: xbcom\n\
          [ -b <type> ]   select target board (c3 | ssf | hub | hub96) (default is hub)\n\
          [ -p <port> ]   serial port (default is %s)\n\
-         [ -w ]          write a spin source file\n\
          [ -e ]          write loader to eeprom\n\
          [ -r ]          load and run the compiled program\n\
          [ -t ]          enter terminal mode after running the program\n\
@@ -247,14 +238,13 @@ static void ConstructOutputName(const char *infile, char *outfile, char *ext)
     strcat(outfile, ext);
 }
 
-static void SourceRewind(void *cookie)
+static void MyInfo(System *sys, const char *fmt, va_list ap)
 {
-    FILE *fp = (FILE *)cookie;
-    fseek(fp, 0, SEEK_SET);
+    vfprintf(stdout, fmt, ap);
 }
 
-static int SourceGetLine(void *cookie, char *buf, int len)
+static void MyError(System *sys, const char *fmt, va_list ap)
 {
-    FILE *fp = (FILE *)cookie;
-	return fgets(buf, len, fp) != NULL;
+    vfprintf(stderr, fmt, ap);
 }
+

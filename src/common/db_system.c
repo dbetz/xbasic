@@ -1,72 +1,207 @@
 #include <stdio.h>
-#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 #include "db_system.h"
 
-/* InitFreeSpace - initialize free space allocator */
-void InitFreeSpace(System *sys, uint8_t *space, size_t size)
+#if defined(WIN32)
+#include <windows.h>
+#include <psapi.h>
+#endif
+
+#if defined(WIN32)
+#define SEP ';'
+#else
+#define SEP ':'
+#endif
+
+typedef struct PathEntry PathEntry;
+struct PathEntry {
+    PathEntry *next;
+    char path[1];
+};
+
+static PathEntry *path = NULL;
+static PathEntry **pNextPathEntry = &path;
+
+static const char *MakePath(PathEntry *entry, const char *name);
+
+void xbInfo(System *sys, const char *fmt, ...)
 {
-    sys->freeSpace = sys->freeMark = sys->freeNext = space;
-    sys->freeTop = space + size;
+    va_list ap;
+    va_start(ap, fmt);
+    xbInfoV(sys, fmt, ap);
+    va_end(ap);
 }
 
-/* MarkFreeSpace - initialize free space allocator */
-void MarkFreeSpace(System *sys)
+void xbError(System *sys, const char *fmt, ...)
 {
-    sys->freeMark = sys->freeNext;
+    va_list ap;
+    va_start(ap, fmt);
+    xbErrorV(sys, fmt, ap);
+    va_end(ap);
 }
 
-/* ResetFreeSpace - initialize free space allocator */
-void ResetFreeSpace(System *sys)
+void *xbOpenFileInPath(System *sys, const char *name, const char *mode)
 {
-    sys->freeNext = sys->freeMark;
+    PathEntry *entry;
+    void *file;
+    
+#if 0
+    xbInfo("path:");
+    for (entry = path; entry != NULL; entry = entry->next)
+        xbInfo(" '%s'", entry->path);
+    xbInfo("\n");
+#endif
+    
+    if (!(file = xbOpenFile(sys, name, mode))) {
+        for (entry = path; entry != NULL; entry = entry->next)
+            if ((file = xbOpenFile(sys, MakePath(entry, name), mode)) != NULL)
+                break;
+    }
+    return file;
 }
 
-/* AllocateFreeSpace - allocate free space */
-uint8_t *AllocateFreeSpace(System *sys, size_t size)
+int xbAddToPath(const char *p)
 {
-    uint8_t *p = sys->freeNext;
-    size = ROUND_TO_WORDS(size);
-	if (p + size > sys->freeTop)
+    PathEntry *entry = malloc(sizeof(PathEntry) + strlen(p));
+    if (!(entry))
+        return FALSE;
+    strcpy(entry->path, p);
+    *pNextPathEntry = entry;
+    pNextPathEntry = &entry->next;
+    entry->next = NULL;
+    return TRUE;
+}
+
+#if defined(WIN32)
+
+/* GetProgramPath - get the path relative the application directory */
+static char *GetProgramPath(void)
+{
+    static char fullpath[1024];
+    char *p;
+
+#if defined(Q_OS_WIN32)
+    /* get the full path to the executable */
+    if (!GetModuleFileNameA(NULL, fullpath, sizeof(fullpath)))
         return NULL;
-    sys->freeNext += size;
-    return p;
+#else
+    /* get the full path to the executable */
+    if (!GetModuleFileNameEx(GetCurrentProcess(), NULL, fullpath, sizeof(fullpath)))
+        return NULL;
+#endif
+
+    /* remove the executable filename */
+    if ((p = strrchr(fullpath, '\\')) != NULL)
+        *p = '\0';
+
+    /* remove the immediate directory containing the executable (usually 'bin') */
+    if ((p = strrchr(fullpath, '\\')) != NULL) {
+        *p = '\0';
+        
+        /* check for the 'Release' or 'Debug' build directories used by Visual C++ */
+        if (strcmp(&p[1], "Release") == 0 || strcmp(&p[1], "Debug") == 0) {
+            if ((p = strrchr(fullpath, '\\')) != NULL)
+                *p = '\0';
+        }
+    }
+
+    /* generate the full path to the 'include' directory */
+    strcat(fullpath, "\\include\\");
+    return fullpath;
 }
 
-/* AllocateAllFreeSpace - allocate all of the remaining free space */
-uint8_t *AllocateAllFreeSpace(System *sys, size_t *pSize)
+#endif
+
+int xbAddEnvironmentPath(void)
 {
-    uint8_t *p = sys->freeNext;
-    *pSize = sys->freeTop - p;
-    sys->freeNext = sys->freeTop;
-    return p;
+    char *p, *end;
+    
+    /* add path entries from the environment */
+    if ((p = getenv("XB_INC")) != NULL) {
+        while ((end = strchr(p, SEP)) != NULL) {
+            *end = '\0';
+            if (!xbAddToPath(p))
+                return FALSE;
+            p = end + 1;
+        }
+        if (!xbAddToPath(p))
+            return FALSE;
+    }
+    
+    /* add the path relative to the location of the executable */
+#if defined(WIN32)
+    if (!(p = GetProgramPath()))
+        if (!VM_AddToPath(p))
+            return FALSE;
+#endif
+
+    return TRUE;
 }
 
-/* VM_printf - formatted print */
-void VM_printf(const char *fmt, ...)
+static const char *MakePath(PathEntry *entry, const char *name)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    VM_vprintf(fmt, ap);
-    va_end(ap);
+    static char fullpath[1024];
+    strcpy(fullpath, entry->path);
+#if defined(WIN32)
+	strcat(fullpath, "\\");
+#else
+	strcat(fullpath, "/");
+#endif
+	strcat(fullpath, name);
+	return fullpath;
 }
 
-/* VM_vprintf - formatted print with varargs list */
-void VM_vprintf(const char *fmt, va_list ap)
+/* functions below depend on stdio */
+
+void *xbCreateTmpFile(System *sys, const char *name, const char *mode)
 {
-    char buf[80], *p = buf;
-    vsprintf(buf, fmt, ap);
-    while (*p != '\0')
-        VM_putchar(*p++);
+    return fopen(name, mode);
 }
 
-/* Fatal - report a fatal error and exit */
-void Fatal(System *sys, char *fmt, ...)
+int xbRemoveTmpFile(System *sys, const char *name)
 {
-    va_list ap;
-    va_start(ap, fmt);
-    VM_printf("error: ");
-    VM_vprintf(fmt, ap);
-    VM_putchar('\n');
-    va_end(ap);
-    longjmp(sys->errorTarget, 1);
+    return remove(name) == 0;
 }
+void *xbOpenFile(System *sys, const char *name, const char *mode)
+{
+    return (void *)fopen(name, mode);
+}
+
+int xbCloseFile(void *file)
+{
+    return fclose((FILE *)file) == 0;
+}
+
+char *xbGetLine(void *file, char *buf, size_t size)
+{
+    return fgets(buf, size, (FILE *)file);
+}
+
+size_t xbReadFile(void *file, void *buf, size_t size)
+{
+    return fread(buf, 1, size, (FILE *)file);
+}
+
+size_t xbWriteFile(void *file, const void *buf, size_t size)
+{
+    return fwrite(buf, 1, size, (FILE *)file);
+}
+
+int xbSeekFile(void *file, long offset, int whence)
+{
+    return fseek((FILE *)file, offset, whence);
+}
+
+#if defined(NEED_STRCASECMP)
+
+int strcasecmp(const char *s1, const char *s2)
+{
+    while (*s1 != '\0' && (tolower(*s1) == tolower(*s2))) {
+        ++s1;
+        ++s2;
+    }
+    return tolower((unsigned char) *s1) - tolower((unsigned char) *s2);
+}
+
+#endif
