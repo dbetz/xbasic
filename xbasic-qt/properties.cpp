@@ -34,7 +34,7 @@ Properties::Properties(QWidget *parent) : QDialog(parent)
 
     setLayout(layout);
 
-    QSettings settings(tr("MicroCSource"), tr("xBasic QtGUI"),this);
+    QSettings settings(publisherKey, xBasicGuiKey,this);
     QVariant compv = settings.value(compilerKey);
     QVariant incv = settings.value(includesKey);
 
@@ -50,7 +50,7 @@ Properties::Properties(QWidget *parent) : QDialog(parent)
         leditIncludes->setText(s);
     }
 
-    this->setWindowTitle(tr("Compiler Properties"));
+    //parent->setWindowTitle(tr("xBasic IDE Compiler Properties"));
     resize(400,260);
 }
 
@@ -58,7 +58,7 @@ Properties::Properties(QWidget *parent) : QDialog(parent)
 void Properties::browseCompiler()
 {
     QString fileName = QFileDialog::getOpenFileName(this,
-            tr("Select xBasic Compiler"), "", "xBasic Compiler (*)");
+            tr("Select xBasic Compiler"), "", "xBasic Compiler (xbcom-qt*)");
     QString s = QDir::fromNativeSeparators(fileName);
     compilerstr = leditCompiler->text();
     if(s.length() > 0)
@@ -69,7 +69,7 @@ void Properties::browseCompiler()
 void Properties::browseIncludes()
 {
     QString pathName = QFileDialog::getExistingDirectory(this,
-            tr("Select xBasic Include Path"), "");
+            tr("Select xBasic Include Path"), "xBasic Includes (*))");
     QString s = QDir::fromNativeSeparators(pathName);
     if(s.length() == 0)
         return;
@@ -77,7 +77,7 @@ void Properties::browseIncludes()
         if(s.mid(s.length()-1) != "/")
             s += "/";
     }
-    else if(s.indexOf("\\")) {
+    else if(s.indexOf("\\") > -1) {
         if(s.mid(s.length()-1) != "\\")
             s += "\\";
     }
@@ -105,5 +105,6 @@ void Properties::showProperties()
 {
     compilerstr = leditCompiler->text();
     includesstr = leditIncludes->text();
+    this->setWindowTitle("xBasic IDE Compiler Properties");
     this->show();
 }
