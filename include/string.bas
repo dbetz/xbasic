@@ -33,10 +33,12 @@ rem ==================================================
 
 def strcpy(str1() as byte, str2() as byte)
   dim i = 0
+  dim ch
   do
-    str1(i) = str2(i)
+    ch = str2(i)
+    str1(i) = ch
     i = i + 1
-  loop until str2(i) = 0
+  loop until ch = 0
 end def
 
 rem ==================================================

@@ -12,7 +12,7 @@ def inputGetLine(dev)
 end def
 
 def inputInt(dev)
-    dimxx ch = skipSpaces
+    dim ch = skipSpaces
     dim value = 0
     dim sign = 1
     
