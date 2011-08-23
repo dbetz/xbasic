@@ -38,10 +38,10 @@ SOURCES += \
     ../src/loader/db_packet.c \
     ../src/loader/db_loader.c \
     ../src/runtime/db_vmdebug.c \
-    ../obj/cygwin/xbasic_vm.c \
-    ../obj/cygwin/serial_helper.c \
-    ../obj/cygwin/hub_loader.c \
-    ../obj/cygwin/flash_loader.c \
+    ../obj/Windows_NT/xbasic_vm.c \
+    ../obj/Windows_NT/serial_helper.c \
+    ../obj/Windows_NT/hub_loader.c \
+    ../obj/Windows_NT/flash_loader.c \
     ../src/common/osint_qt.c \
     ../src/common/mem_malloc.c \
     ../src/compiler/xb_api.c
