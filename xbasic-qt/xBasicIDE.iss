@@ -2,10 +2,15 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "xBasic IDE"
-#define MyAppVersion "0.12"
+#define MyAppVersion "0.1.6"
 #define MyAppPublisher "MicroCSource"
 #define MyAppURL "www.MicroCSource.com"
 #define MyAppExeName "bin\xbasic-qt.exe"
+
+; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; ---- IMPORTANT!!! ---- Set this to your QtPath
+; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+#define MyQtPath "C:\Qt\2010.05"
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -21,8 +26,8 @@ AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
-OutputDir=C:\Propeller\xbasic\xbasic\xbasic-qt-build-desktop
-OutputBaseFilename=xBasicIDE_0_12_setup
+OutputDir=..\xbasic-qt-build-desktop
+OutputBaseFilename=xBasicIDE_0_16_setup
 Compression=lzma
 SolidCompression=yes
 
@@ -34,14 +39,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 
 [Files]
-Source: "C:\Propeller\xbasic\xbasic\xbasic-qt-build-desktop\debug\xbasic-qt.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "C:\Propeller\xbasic\xbasic\xbcom-qt-build-desktop\release\xbcom-qt.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "C:\Propeller\xbasic\xbasic\xbasic-qt-build-desktop\release\libgcc_s_dw2-1.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "C:\Propeller\xbasic\xbasic\xbasic-qt-build-desktop\release\mingwm10.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "C:\Propeller\xbasic\xbasic\xbasic-qt-build-desktop\release\QtCored4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "C:\Propeller\xbasic\xbasic\xbasic-qt-build-desktop\release\QtGuid4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "C:\Propeller\xbasic\xbasic\include\*"; DestDir: "{app}\include"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "C:\Propeller\xbasic\xbasic\samples\*"; DestDir: "{app}\samples"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\xbasic-qt-build-desktop\debug\xbasic-qt.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "..\xbcom-qt-build-desktop\debug\xbcom-qt.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#MyQtPath}\mingw\bin\libgcc_s_dw2-1.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#MyQtPath}\mingw\bin\mingwm10.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#MyQtPath}\qt\bin\QtCored4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#MyQtPath}\qt\bin\QtGuid4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "..\include\*"; DestDir: "{app}\include"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\samples\*"; DestDir: "{app}\samples"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
