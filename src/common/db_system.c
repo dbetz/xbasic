@@ -132,7 +132,7 @@ int xbAddEnvironmentPath(void)
     /* add the path relative to the location of the executable */
 #if defined(WIN32)
     if (!(p = GetProgramPath()))
-        if (!VM_AddToPath(p))
+        if (!xbAddToPath(p))
             return FALSE;
 #endif
 

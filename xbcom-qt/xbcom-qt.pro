@@ -38,11 +38,13 @@ SOURCES += \
     ../src/loader/db_packet.c \
     ../src/loader/db_loader.c \
     ../src/runtime/db_vmdebug.c \
-    ../obj/macosx/xbasic_vm.c \
-    ../obj/macosx/serial_helper.c \
-    ../obj/macosx/hub_loader.c \
-    ../obj/macosx/flash_loader.c \
-    ../src/common/osint_qt.c
+    ../obj/cygwin/xbasic_vm.c \
+    ../obj/cygwin/serial_helper.c \
+    ../obj/cygwin/hub_loader.c \
+    ../obj/cygwin/flash_loader.c \
+    ../src/common/osint_qt.c \
+    ../src/common/mem_malloc.c \
+    ../src/compiler/xb_api.c
 
 HEADERS += \
     ../src/common/osint.h \
@@ -56,4 +58,6 @@ HEADERS += \
     ../src/misc/db_spin.h \
     ../src/runtime/db_vmimage.h \
     ../src/runtime/db_vmdebug.h \
-    ../src/runtime/db_vm.h
+    ../src/runtime/db_vm.h \
+    ../src/common/mem_malloc.h \
+    ../src/compiler/xb_api.h
