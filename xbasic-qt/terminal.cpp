@@ -7,10 +7,15 @@ Terminal::Terminal(QWidget *parent) : QDialog(parent)
     termEditor->setReadOnly(false);
     //connect(this, SIGNAL(accepted()), this, SLOT(keyPressEvent(QKeyEvent *)));
     termLayout->addWidget(termEditor);
+    QPushButton *cls = new QPushButton(tr("Clear"),this);
+    connect(cls,SIGNAL(clicked()), this, SLOT(clearScreen()));
     QDialogButtonBox *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok);
     connect(buttonBox, SIGNAL(accepted()), this, SLOT(accept()));
     connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
-    termLayout->addWidget(buttonBox);
+    QHBoxLayout *butLayout = new QHBoxLayout(this);
+    termLayout->addLayout(butLayout);
+    butLayout->addWidget(cls);
+    butLayout->addWidget(buttonBox);
     setLayout(termLayout);
     this->setWindowFlags(Qt::Tool);
     resize(700,500);
@@ -38,3 +43,7 @@ void Terminal::reject()
     done(QDialog::Rejected);
 }
 
+void Terminal::clearScreen()
+{
+    termEditor->setPlainText("");
+}
