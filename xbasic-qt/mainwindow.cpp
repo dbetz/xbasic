@@ -113,9 +113,13 @@ void MainWindow::keyHandler(QKeyEvent* event)
     case Qt::Key_Backspace:
         key = '\b';
         break;
+    default:
+        if(key & Qt::Key_Escape)
+            return;
+        QChar c = event->text().at(0);
+        key = (int)c.toAscii();
+        break;
     }
-    if(key & Qt::Key_Escape)
-        return;
     QByteArray barry;
     barry.append((char)key);
     portListener->send(barry);
@@ -296,9 +300,10 @@ void MainWindow::saveFile(const QString &path)
         QString fileName = editorTabs->tabToolTip(n);
         QString data = editors->at(n)->toPlainText();
 
+        this->editorTabs->setTabText(n,shortFileName(fileName));
         if (!fileName.isEmpty()) {
             QFile file(fileName);
-            if (file.open(QFile::WriteOnly)) {
+            if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
             }
@@ -313,9 +318,10 @@ void MainWindow::saveFileByTabIndex(int tab)
         QString fileName = editorTabs->tabToolTip(tab);
         QString data = editors->at(tab)->toPlainText();
 
+        this->editorTabs->setTabText(tab,shortFileName(fileName));
         if (!fileName.isEmpty()) {
             QFile file(fileName);
-            if (file.open(QFile::WriteOnly)) {
+            if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
             }
@@ -342,7 +348,7 @@ void MainWindow::saveAsFile(const QString &path)
 
         if (!fileName.isEmpty()) {
             QFile file(fileName);
-            if (file.open(QFile::WriteOnly)) {
+            if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
             }
@@ -656,23 +662,19 @@ void MainWindow::setupHelpMenu()
     QMenu *helpMenu = new QMenu(tr("&Help"), this);
     menuBar()->addMenu(helpMenu);
 
-    helpMenu->addAction(QIcon(":/images/helphint.png"), tr("&About"), this, SLOT(about()));
-    helpMenu->addAction(QIcon(":/images/helpsymbol.png"), tr("Language Help"), this, SLOT(languageHelp()));
+    helpMenu->addAction(QIcon(":/images/helpsymbol.png"), tr("&About"), this, SLOT(about()));
 }
 
 void MainWindow::about()
 {
-    QMessageBox::about(this, tr("About xBasic"),
-                tr("<p><b>xBasic</b> allows running basic programs from " \
-                   "Propeller HUB or user defined external memory.</p>"));
+    QString version = QString("xBasic IDE Version %1.%2.%3")
+            .arg(IDEVERSION).arg(MINVERSION).arg(FIXVERSION);
+    QMessageBox::about(this, tr("About xBasic"), version + \
+                tr("<p><b>xBasic</b> runs BASIC programs from Propeller HUB<br/>" \
+                   "or from user defined external memory.</p>") +
+                tr("Visit <a href=\"www.MicroCSource.com/xbasic/help.htm\">MicroCSource.com</a> for more xBasic help."));
 }
 
-void MainWindow::languageHelp()
-{
-    QMessageBox::about(this, tr("Language Help"),
-                tr("<p><b>xBasic</b> language help ... TBD ..." \
-                   " </p>"));
-}
 
 void MainWindow::projectTreeClicked(QModelIndex index)
 {
