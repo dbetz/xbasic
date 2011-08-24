@@ -12,6 +12,7 @@ Terminal::Terminal(QWidget *parent) : QDialog(parent)
     connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
     termLayout->addWidget(buttonBox);
     setLayout(termLayout);
+    this->setWindowFlags(Qt::Tool);
     resize(700,500);
 }
 

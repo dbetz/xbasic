@@ -67,25 +67,31 @@ void PortListener::onReadyRead()
     if(len > blen)
         len = blen;
     int ret = port->read(buff, len);
-    if(ret > -1) {
+
+    if(ret > -1)
+    {
         buff[ret] = '\0';
-        //QString msg = buff;
-        textEditor->setPlainText(textEditor->toPlainText() + buff);
+        QString sbuff(buff);
+        if(sbuff.indexOf('\b') < 0) // if no backspace, just append buffer
+        {
+            textEditor->setPlainText(textEditor->toPlainText() + buff);
+        }
+        else                        // if backspaces, do it the slow way.
+        {
+            for(int n = 0; n < ret; n++)
+            {
+                QString text = textEditor->toPlainText();
+                int tlen = text.length();
+                if(buff[n] == '\b')
+                    textEditor->setPlainText(text.mid(0,tlen-1));
+                else
+                    textEditor->setPlainText(text + buff[n]);
+            }
+        }
         textEditor->moveCursor(QTextCursor::End);
     }
 }
 
-/*
-void PortListener::onReadyRead()
-{
-    QByteArray bytes;
-    int len = port->bytesAvailable();
-    bytes.resize(len);
-    port->read(bytes.data(), bytes.size());
-    textEditor->setPlainText(textEditor->toPlainText() + bytes);
-    textEditor->moveCursor(QTextCursor::End);
-}
-*/
 void PortListener::onDsrChanged(bool status)
 {
     if (status)
