@@ -241,8 +241,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::newFile()
 {
+    fileChangeDisable = true;
     setupEditor();
-    editorTabs->addTab(editors->at(editors->count()-1),(const QString&)untitledstr);
+    int tab = editors->count()-1;
+    editorTabs->addTab(editors->at(tab),(const QString&)untitledstr);
+    editorTabs->setCurrentIndex(tab);
+    fileChangeDisable = false;
 }
 
 void MainWindow::openFile(const QString &path)
@@ -578,6 +582,8 @@ int  MainWindow::runCompiler(QString copts)
     }
 
     QString result = proc.readAll();
+    result += proc.readAllStandardOutput();
+    result += proc.readAllStandardError();
     int exitCode = proc.exitCode();
     int exitStatus = proc.exitStatus();
 
@@ -754,11 +760,13 @@ void MainWindow::referenceTreeClicked(QModelIndex index)
 
 void MainWindow::closeTab(int index)
 {
+    fileChangeDisable = true;
     editors->at(index)->setPlainText("");
     editors->remove(index);
     if(editorTabs->count() == 1)
         newFile();
     editorTabs->removeTab(index);
+    fileChangeDisable = false;
 }
 
 void MainWindow::changeTab(int index)

@@ -89,5 +89,4 @@ win32 {
 }
 
 FORMS += \
-    properties.ui \
     hardware.ui
