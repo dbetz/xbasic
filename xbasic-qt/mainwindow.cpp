@@ -462,6 +462,8 @@ void MainWindow::setCurrentPort(int index)
 
 void MainWindow::checkAndSaveFiles()
 {
+    if(projectModel == NULL)
+        return;
     QString title = projectModel->getTreeName();
     QString modTitle = title + " *";
     for(int tab = editorTabs->count()-1; tab > -1; tab--)
@@ -541,7 +543,7 @@ QStringList MainWindow::getCompilerParameters(QString copts)
 
 int  MainWindow::runCompiler(QString copts)
 {
-    if(projectFile.isNull()) {
+    if(projectModel == NULL || projectFile.isNull()) {
         QMessageBox mbox(QMessageBox::Critical, "Error No Project",
             "Please select a tab and press F4 to set main project file.", QMessageBox::Ok);
         mbox.exec();
@@ -684,6 +686,8 @@ void MainWindow::about()
 
 void MainWindow::projectTreeClicked(QModelIndex index)
 {
+    if(projectModel == NULL)
+        return;
     QVariant vs = projectModel->data(index, Qt::DisplayRole);
     if(vs.canConvert(QVariant::String))
     {
