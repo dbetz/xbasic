@@ -62,9 +62,10 @@ public:
     TreeItem *parent();
     QString file() const;
 
-private:
     QList<TreeItem*> childItems;
     QList<QVariant> itemData;
+
+private:
     TreeItem *parentItem;
     QString filePath;
 };
