@@ -338,14 +338,15 @@ void MainWindow::saveAsFile(const QString &path)
 {
     try {
         int n = this->editorTabs->currentIndex();
-        //QString fileName = editors->at(n)->toolTip();
         QString data = editors->at(n)->toPlainText();
         QString fileName = path;
-        //QString data = editor->toPlainText();
 
-        if (fileName.isNull())
+        if (fileName.isEmpty())
             fileName = QFileDialog::getSaveFileName(this,
                 tr("Save As File"), "", "xBasic Files (*.bas)");
+
+        if (fileName.isEmpty())
+            return;
 
         this->editorTabs->setTabText(n,shortFileName(fileName));
         editorTabs->setTabToolTip(n,fileName);
@@ -476,7 +477,6 @@ void MainWindow::checkAndSaveFiles()
         }
     }
 
-    //TreeItem *item = static_cast<TreeItem*>(root.internalPointer());
     int len = projectModel->rowCount();
     for(int n = 0; n < len; n++)
     {
