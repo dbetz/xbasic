@@ -38,13 +38,13 @@ SOURCES += \
     ../src/loader/db_packet.c \
     ../src/loader/db_loader.c \
     ../src/runtime/db_vmdebug.c \
-    ../obj/Windows_NT/xbasic_vm.c \
-    ../obj/Windows_NT/serial_helper.c \
-    ../obj/Windows_NT/hub_loader.c \
-    ../obj/Windows_NT/flash_loader.c \
     ../src/common/osint_qt.c \
     ../src/common/mem_malloc.c \
-    ../src/compiler/xb_api.c
+    ../src/compiler/xb_api.c \
+    xbasic_vm.c \
+    serial_helper.c \
+    hub_loader.c \
+    flash_loader.c
 
 HEADERS += \
     ../src/common/osint.h \

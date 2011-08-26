@@ -20,20 +20,10 @@
    <valuemap key="ProjectExplorer.Target.BuildConfiguration.0" type="QVariantMap">
     <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.0" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT</value>
-     </valuelist>
-     <value key="ProjectExplorer.ProcessStep.Command" type="QString">mkdir</value>
-     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">false</value>
-     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">mkdir obj/Windows_NT</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.1" type="QVariantMap">
-     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Wall</value>
       <value type="QString">../src/tools/bin2c.c</value>
       <value type="QString">-o</value>
-      <value type="QString">../bin/Windows_NT/bin2c.exe</value>
+      <value type="QString">bin2c.exe</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">gcc.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -41,35 +31,12 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">bin2c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.10" type="QVariantMap">
-     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/xbasic_vm.dat</value>
-      <value type="QString">../obj/Windows_NT/xbasic_vm.c</value>
-     </valuelist>
-     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
-     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
-     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">xbasic_vm_c</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.11" type="QVariantMap">
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">qmake</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">QtProjectManager.QMakeBuildStep</value>
-     <valuelist key="QtProjectManager.QMakeBuildStep.QMakeArguments" type="QVariantList"/>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.12" type="QVariantMap">
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Make</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.MakeStep</value>
-     <value key="Qt4ProjectManager.MakeStep.Clean" type="bool">false</value>
-     <valuelist key="Qt4ProjectManager.MakeStep.MakeArguments" type="QVariantList"/>
-     <value key="Qt4ProjectManager.MakeStep.MakeCommand" type="QString"></value>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.2" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.1" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Wall</value>
       <value type="QString">../src/tools/bin2xbasic.c</value>
       <value type="QString">-o</value>
-      <value type="QString">../bin/Windows_NT/bin2xbasic.exe</value>
+      <value type="QString">bin2xbasic.exe</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">gcc.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -77,12 +44,50 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">bin2xbasic</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.3" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.10" type="QVariantMap">
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">qmake</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">QtProjectManager.QMakeBuildStep</value>
+     <valuelist key="QtProjectManager.QMakeBuildStep.QMakeArguments" type="QVariantList"/>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.11" type="QVariantMap">
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Make</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.MakeStep</value>
+     <value key="Qt4ProjectManager.MakeStep.Clean" type="bool">false</value>
+     <valuelist key="Qt4ProjectManager.MakeStep.MakeArguments" type="QVariantList"/>
+     <value key="Qt4ProjectManager.MakeStep.MakeCommand" type="QString"></value>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.12" type="QVariantMap">
+     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
+      <value type="QString">-Ograucx</value>
+      <value type="QString">-o</value>
+      <value type="QString">../include/c3_cache</value>
+      <value type="QString">-c</value>
+      <value type="QString">../spin/c3_cache.spin</value>
+     </valuelist>
+     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
+     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
+     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">c3_cache.dat</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.13" type="QVariantMap">
+     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
+      <value type="QString">-Ograucx</value>
+      <value type="QString">-o</value>
+      <value type="QString">../include/ssf_cache</value>
+      <value type="QString">-c</value>
+      <value type="QString">../spin/ssf_cache.spin</value>
+     </valuelist>
+     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
+     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
+     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">ssf_cache.dat</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.2" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-b</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/serial_helper</value>
       <value type="QString">../spin/serial_helper.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -91,10 +96,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">serial_helper_bin</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.4" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.3" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/serial_helper.binary</value>
-      <value type="QString">../obj/Windows_NT/serial_helper.c</value>
+      <value type="QString">serial_helper.binary</value>
+      <value type="QString">serial_helper.c</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -102,12 +107,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">serial_helper_c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.5" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.4" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-b</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/hub_loader</value>
       <value type="QString">../spin/hub_loader.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -116,10 +119,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">hub_loader_bin</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.6" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.5" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/hub_loader.binary</value>
-      <value type="QString">../obj/Windows_NT/hub_loader.c</value>
+      <value type="QString">hub_loader.binary</value>
+      <value type="QString">hub_loader.c</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -127,12 +130,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">hub_loader_c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.7" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.6" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-b</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/flash_loader</value>
       <value type="QString">../spin/flash_loader.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -141,10 +142,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">flash_loader_bin</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.8" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.7" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/flash_loader.binary</value>
-      <value type="QString">../obj/Windows_NT/flash_loader.c</value>
+      <value type="QString">flash_loader.binary</value>
+      <value type="QString">flash_loader.c</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -152,12 +153,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">flash_loader</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.9" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.8" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-c</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/xbasic_vm</value>
       <value type="QString">../spin/xbasic_vm.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -166,7 +165,18 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">xbasic_vm_dat</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <value key="ProjectExplorer.BuildConfiguration.BuildStepsCount" type="int">13</value>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.9" type="QVariantMap">
+     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
+      <value type="QString">xbasic_vm.dat</value>
+      <value type="QString">xbasic_vm.c</value>
+     </valuelist>
+     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
+     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
+     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">xbasic_vm_c</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
+    </valuemap>
+    <value key="ProjectExplorer.BuildConfiguration.BuildStepsCount" type="int">14</value>
     <valuemap key="ProjectExplorer.BuildConfiguration.CleanStep.0" type="QVariantMap">
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Make</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.MakeStep</value>
@@ -178,11 +188,13 @@
     </valuemap>
     <value key="ProjectExplorer.BuildConfiguration.CleanStepsCount" type="int">1</value>
     <value key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment" type="bool">false</value>
-    <valuelist key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges" type="QVariantList"/>
+    <valuelist key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges" type="QVariantList">
+     <value type="QString">PATH=C:\Qt\2010.05\mingw\bin;C:\Qt\2010.05\qt\bin;C:\windows\SysWOW64;C:\Program Files (x86)\Vim\vim73;C:\bstc;C:\Program Files (x86)\Java\jre6\bin;C:\qt\2010.05\bin;C:\qt\2010.05\mingw\bin;c:\WinAVR-20100110\utils\bin;c:\WinAVR-20100110\bin;C:\Program Files\Mercurial;C:\xbasic2\xbcom-qt-build-desktop</value>
+    </valuelist>
     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Debug</value>
     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.Qt4BuildConfiguration</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration" type="int">2</value>
-    <value key="Qt4ProjectManager.Qt4BuildConfiguration.BuildDirectory" type="QString">C:/xbasic/xbcom-qt-build-desktop</value>
+    <value key="Qt4ProjectManager.Qt4BuildConfiguration.BuildDirectory" type="QString">C:/xbasic2/xbcom-qt-build-desktop</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.QtVersionId" type="int">2</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.ToolChain" type="int">2</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.UseShadowBuild" type="bool">true</value>
@@ -190,20 +202,10 @@
    <valuemap key="ProjectExplorer.Target.BuildConfiguration.1" type="QVariantMap">
     <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.0" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT</value>
-     </valuelist>
-     <value key="ProjectExplorer.ProcessStep.Command" type="QString">mkdir</value>
-     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">false</value>
-     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">mkdir obj/Windows_NT</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.1" type="QVariantMap">
-     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Wall</value>
       <value type="QString">../src/tools/bin2c.c</value>
       <value type="QString">-o</value>
-      <value type="QString">../bin/Windows_NT/bin2c.exe</value>
+      <value type="QString">bin2c.exe</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">gcc.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -211,35 +213,12 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">bin2c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.10" type="QVariantMap">
-     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/xbasic_vm.dat</value>
-      <value type="QString">../obj/Windows_NT/xbasic_vm.c</value>
-     </valuelist>
-     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
-     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
-     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">xbasic_vm_c</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.11" type="QVariantMap">
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">qmake</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">QtProjectManager.QMakeBuildStep</value>
-     <valuelist key="QtProjectManager.QMakeBuildStep.QMakeArguments" type="QVariantList"/>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.12" type="QVariantMap">
-     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Make</value>
-     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.MakeStep</value>
-     <value key="Qt4ProjectManager.MakeStep.Clean" type="bool">false</value>
-     <valuelist key="Qt4ProjectManager.MakeStep.MakeArguments" type="QVariantList"/>
-     <value key="Qt4ProjectManager.MakeStep.MakeCommand" type="QString"></value>
-    </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.2" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.1" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Wall</value>
       <value type="QString">../src/tools/bin2xbasic.c</value>
       <value type="QString">-o</value>
-      <value type="QString">../bin/Windows_NT/bin2xbasic.exe</value>
+      <value type="QString">bin2xbasic.exe</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">gcc.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -247,12 +226,50 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">bin2xbasic</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.3" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.10" type="QVariantMap">
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">qmake</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">QtProjectManager.QMakeBuildStep</value>
+     <valuelist key="QtProjectManager.QMakeBuildStep.QMakeArguments" type="QVariantList"/>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.11" type="QVariantMap">
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Make</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.MakeStep</value>
+     <value key="Qt4ProjectManager.MakeStep.Clean" type="bool">false</value>
+     <valuelist key="Qt4ProjectManager.MakeStep.MakeArguments" type="QVariantList"/>
+     <value key="Qt4ProjectManager.MakeStep.MakeCommand" type="QString"></value>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.12" type="QVariantMap">
+     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
+      <value type="QString">-Ograucx</value>
+      <value type="QString">-o</value>
+      <value type="QString">../include/c3_cache</value>
+      <value type="QString">-c</value>
+      <value type="QString">../spin/c3_cache.spin</value>
+     </valuelist>
+     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
+     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
+     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">c3_cache.dat</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.13" type="QVariantMap">
+     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
+      <value type="QString">-Ograucx</value>
+      <value type="QString">-o</value>
+      <value type="QString">../include/ssf_cache</value>
+      <value type="QString">-c</value>
+      <value type="QString">../spin/ssf_cache.spin</value>
+     </valuelist>
+     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
+     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
+     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">ssf_cache.dat</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
+    </valuemap>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.2" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-b</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/serial_helper</value>
       <value type="QString">../spin/serial_helper.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -261,10 +278,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">serial_helper_bin</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.4" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.3" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/serial_helper.binary</value>
-      <value type="QString">../obj/Windows_NT/serial_helper.c</value>
+      <value type="QString">serial_helper.binary</value>
+      <value type="QString">serial_helper.c</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -272,12 +289,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">serial_helper_c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.5" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.4" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-b</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/flash_loader</value>
       <value type="QString">../spin/flash_loader.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -286,10 +301,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">flash_loader_bin</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.6" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.5" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/flash_loader.binary</value>
-      <value type="QString">../obj/Windows_NT/flash_loader.c</value>
+      <value type="QString">flash_loader.binary</value>
+      <value type="QString">flash_loader.c</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -297,12 +312,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">flash_loader_c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.7" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.6" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-b</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/hub_loader</value>
       <value type="QString">../spin/hub_loader.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -311,10 +324,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">hub_loader_bin</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.8" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.7" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
-      <value type="QString">../obj/Windows_NT/hub_loader.binary</value>
-      <value type="QString">../obj/Windows_NT/hub_loader.c</value>
+      <value type="QString">hub_loader.binary</value>
+      <value type="QString">hub_loader.c</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
      <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
@@ -322,12 +335,10 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">hub_loader_c</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.9" type="QVariantMap">
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.8" type="QVariantMap">
      <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
       <value type="QString">-Ograucx</value>
       <value type="QString">-c</value>
-      <value type="QString">-o</value>
-      <value type="QString">../obj/Windows_NT/xbasic_vm</value>
       <value type="QString">../spin/xbasic_vm.spin</value>
      </valuelist>
      <value key="ProjectExplorer.ProcessStep.Command" type="QString">bstc</value>
@@ -336,7 +347,18 @@
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">xbasic_vm_dat</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
     </valuemap>
-    <value key="ProjectExplorer.BuildConfiguration.BuildStepsCount" type="int">13</value>
+    <valuemap key="ProjectExplorer.BuildConfiguration.BuildStep.9" type="QVariantMap">
+     <valuelist key="ProjectExplorer.ProcessStep.Arguments" type="QVariantList">
+      <value type="QString">xbasic_vm.dat</value>
+      <value type="QString">xbasic_vm.c</value>
+     </valuelist>
+     <value key="ProjectExplorer.ProcessStep.Command" type="QString">bin2c.exe</value>
+     <value key="ProjectExplorer.ProcessStep.Enabled" type="bool">true</value>
+     <value key="ProjectExplorer.ProcessStep.WorkingDirectory" type="QString">$BUILDDIR</value>
+     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">xbasic_vm_c</value>
+     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">ProjectExplorer.ProcessStep</value>
+    </valuemap>
+    <value key="ProjectExplorer.BuildConfiguration.BuildStepsCount" type="int">14</value>
     <valuemap key="ProjectExplorer.BuildConfiguration.CleanStep.0" type="QVariantMap">
      <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Make</value>
      <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.MakeStep</value>
@@ -348,11 +370,13 @@
     </valuemap>
     <value key="ProjectExplorer.BuildConfiguration.CleanStepsCount" type="int">1</value>
     <value key="ProjectExplorer.BuildConfiguration.ClearSystemEnvironment" type="bool">false</value>
-    <valuelist key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges" type="QVariantList"/>
+    <valuelist key="ProjectExplorer.BuildConfiguration.UserEnvironmentChanges" type="QVariantList">
+     <value type="QString">PATH=C:\Qt\2010.05\mingw\bin;C:\Qt\2010.05\qt\bin;C:\windows\SysWOW64;C:\Program Files (x86)\Vim\vim73;C:\bstc;C:\Program Files (x86)\Java\jre6\bin;C:\qt\2010.05\bin;C:\qt\2010.05\mingw\bin;c:\WinAVR-20100110\utils\bin;c:\WinAVR-20100110\bin;C:\Program Files\Mercurial;C:\xbasic2\xbcom-qt-build-desktop</value>
+    </valuelist>
     <value key="ProjectExplorer.ProjectConfiguration.DisplayName" type="QString">Release</value>
     <value key="ProjectExplorer.ProjectConfiguration.Id" type="QString">Qt4ProjectManager.Qt4BuildConfiguration</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.BuildConfiguration" type="int">2</value>
-    <value key="Qt4ProjectManager.Qt4BuildConfiguration.BuildDirectory" type="QString">C:/xbasic/xbcom-qt-build-desktop</value>
+    <value key="Qt4ProjectManager.Qt4BuildConfiguration.BuildDirectory" type="QString">C:/xbasic2/xbcom-qt-build-desktop</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.QtVersionId" type="int">2</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.ToolChain" type="int">2</value>
     <value key="Qt4ProjectManager.Qt4BuildConfiguration.UseShadowBuild" type="bool">true</value>
