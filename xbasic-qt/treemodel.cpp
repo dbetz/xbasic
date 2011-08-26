@@ -366,7 +366,7 @@ void TreeModel::addFileReferences(QString &filePath, QString &incPath, QString &
             if(!root)
                 inc = "  " + inc;
             clist << inc;
-            if(!isDuplicate(rootItem, cap))
+            if(!isDuplicate(rootItem, inc))
                 rootItem->appendChild(new TreeItem(clist, rootItem, filePath));
         }
 

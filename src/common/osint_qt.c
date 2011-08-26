@@ -26,7 +26,7 @@ int serial_init(const char *port, unsigned long baud)
     sprintf(fullPort, "\\\\.\\%s", port);
 
     hSerial = CreateFileA(
-        (LPCWSTR)fullPort,
+        (LPCSTR)fullPort,
         GENERIC_READ | GENERIC_WRITE,
         0,
         NULL,
