@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <limits.h>
 #include "db_compiler.h"
 #include "db_vmdebug.h"
 
@@ -26,7 +27,7 @@ int StartImage(ParseContext *c, const char *name)
             section->offset = dataOffset;
         }
         else {
-            char tmpname[256]; // longer path name for GUI
+            char tmpname[PATH_MAX];
             MakeTmpName(tmpname, name, section->name);
             if (!(section->fp = xbCreateTmpFile(c->sys, tmpname, "w+")))
                 return FALSE;
@@ -89,7 +90,7 @@ int BuildImage(ParseContext *c, const char *name)
     xbSeekFile(c->textTarget->fp, 0, SEEK_END);
     for (section = c->config->sections; section != NULL; section = section->next) {
         if (section != c->textTarget && section->fp) {
-            char tmpname[50];
+            char tmpname[PATH_MAX];
             xbSeekFile(section->fp, 0, SEEK_SET);
             for (size = section->offset; size > 0; size -= cnt) {
                 if ((cnt = size) > sizeof(buf))
