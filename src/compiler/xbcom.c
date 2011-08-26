@@ -21,7 +21,6 @@
 #define DEF_BOARD   "c3"
 
 static void Usage(void);
-static char *GetFilePath(const char *file, char *path);
 static char *ConstructOutputName(const char *infile, char *outfile, char *ext);
 
 static void MyInfo(System *sys, const char *fmt, va_list ap);
@@ -225,19 +224,6 @@ usage: xbcom\n\
          <name>          file to compile\n\
 ", DEF_PORT);
     exit(1);
-}
-
-/* GetFilePath - construct a path from an input filename */
-static char *GetFilePath(const char *file, char *path)
-{
-    char *end = strrchr(file, DIR_SEP);
-    if (end) {
-        strncpy(path, file, end - file);
-        path[end - file] = '\0';
-    }
-    else
-        strcpy(path, "./");
-    return path;
 }
 
 /* ConstructOutputName - construct an output filename from an input filename */
