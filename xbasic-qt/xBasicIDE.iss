@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "xBasic IDE"
-#define MyAppVersion "0.1.6"
+#define MyAppVersion "0.17"
 #define MyAppPublisher "MicroCSource"
 #define MyAppURL "www.MicroCSource.com"
 #define MyAppExeName "bin\xbasic-qt.exe"
@@ -27,7 +27,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\xbasic-qt-build-desktop
-OutputBaseFilename=xBasicIDE_0_16_setup
+OutputBaseFilename=xBasicIDE_0_17_setup
 Compression=lzma
 SolidCompression=yes
 
