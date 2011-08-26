@@ -1,0 +1,1 @@
+waitcnt tos, #0
