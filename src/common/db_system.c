@@ -1,17 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include "db_system.h"
 
 #if defined(WIN32)
 #include <windows.h>
 #include <psapi.h>
-#endif
-
-#if defined(WIN32)
-#define SEP ';'
-#else
-#define SEP ':'
 #endif
 
 typedef struct PathEntry PathEntry;
@@ -119,7 +114,7 @@ int xbAddEnvironmentPath(void)
     
     /* add path entries from the environment */
     if ((p = getenv("XB_INC")) != NULL) {
-        while ((end = strchr(p, SEP)) != NULL) {
+        while ((end = strchr(p, PATH_SEP)) != NULL) {
             *end = '\0';
             if (!xbAddToPath(p))
                 return FALSE;
@@ -141,14 +136,9 @@ int xbAddEnvironmentPath(void)
 
 static const char *MakePath(PathEntry *entry, const char *name)
 {
-    static char fullpath[1024];
-    strcpy(fullpath, entry->path);
-#if defined(WIN32)
-	strcat(fullpath, "\\");
-#else
-	strcat(fullpath, "/");
-#endif
-	strcat(fullpath, name);
+    static char fullpath[PATH_MAX];
+    sprintf(fullpath, "%s%c%s", entry->path, DIR_SEP, name);
+    printf("path: %s\n", fullpath);
 	return fullpath;
 }
 
@@ -163,6 +153,7 @@ int xbRemoveTmpFile(System *sys, const char *name)
 {
     return remove(name) == 0;
 }
+
 void *xbOpenFile(System *sys, const char *name, const char *mode)
 {
     return (void *)fopen(name, mode);

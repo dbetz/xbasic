@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <limits.h>
 #include "db_compiler.h"
 #include "db_loader.h"
 #include "db_packet.h"
@@ -20,7 +21,8 @@
 #define DEF_BOARD   "c3"
 
 static void Usage(void);
-static void ConstructOutputName(const char *infile, char *outfile, char *ext);
+static char *GetFilePath(const char *file, char *path);
+static char *ConstructOutputName(const char *infile, char *outfile, char *ext);
 
 static void MyInfo(System *sys, const char *fmt, va_list ap);
 static void MyError(System *sys, const char *fmt, va_list ap);
@@ -31,7 +33,7 @@ static SystemOps myOps = {
 
 int main(int argc, char *argv[])
 {
-    char *infile = NULL, outfile[FILENAME_MAX];
+    char *infile = NULL, outfile[PATH_MAX];
     char *port, *board, *p;
     BoardConfig *config;
     int writeEepromLoader = FALSE;
@@ -225,8 +227,21 @@ usage: xbcom\n\
     exit(1);
 }
 
+/* GetFilePath - construct a path from an input filename */
+static char *GetFilePath(const char *file, char *path)
+{
+    char *end = strrchr(file, DIR_SEP);
+    if (end) {
+        strncpy(path, file, end - file);
+        path[end - file] = '\0';
+    }
+    else
+        strcpy(path, "./");
+    return path;
+}
+
 /* ConstructOutputName - construct an output filename from an input filename */
-static void ConstructOutputName(const char *infile, char *outfile, char *ext)
+static char *ConstructOutputName(const char *infile, char *outfile, char *ext)
 {
     char *end = strrchr(infile, '.');
     if (end && !strchr(end, '/') && !strchr(end, '\\')) {
@@ -236,6 +251,7 @@ static void ConstructOutputName(const char *infile, char *outfile, char *ext)
     else
         strcpy(outfile, infile);
     strcat(outfile, ext);
+    return outfile;
 }
 
 static void MyInfo(System *sys, const char *fmt, va_list ap)

@@ -8,6 +8,14 @@
 #define FALSE   0
 #endif
 
+#if defined(WIN32)
+#define PATH_SEP    ';'
+#define DIR_SEP     '\\'
+#else
+#define PATH_SEP    ':'
+#define DIR_SEP     '/'
+#endif
+
 /* forward typedefs */
 typedef struct System System;
 
