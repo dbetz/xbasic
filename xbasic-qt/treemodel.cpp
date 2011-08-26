@@ -237,6 +237,22 @@ void TreeModel::setupModelData(const QStringList &lines, TreeItem *parent)
     }
 }
 
+bool TreeModel::isDuplicate(TreeItem *item, QString str)
+{
+    QList<TreeItem*> items = item->childItems;
+    int count = items.count();
+    for(int n = 0; n < count; n++)
+    {
+        QVariant qv = items.at(n)->data(0);
+        if(qv.canConvert(QVariant::String)) {
+            if(qv.toString() == str)
+                return true;
+        }
+    }
+    return false;
+}
+
+
 /*
  * this should be part of a child class, but I'm lazy right now
  */
@@ -257,12 +273,14 @@ void TreeModel::xBasicIncludes(QString &filePath, QString &incPath, QString &sep
             QList<QVariant> clist;
             inc = rx.cap(1);
             cap = rx.cap(2);
-            if(cap != "") {
-                cap = cap.remove("\"");
+            if(cap != "" && cap.indexOf("\"") > -1) {
+                QStringList caps = cap.split("\"");
+                cap = caps.at(1);
                 cap = cap.trimmed();
+                clist << cap;
+                if(!isDuplicate(rootItem, cap))
+                    rootItem->appendChild(new TreeItem(clist, rootItem));
             }
-            clist << cap;
-            rootItem->appendChild(new TreeItem(clist, rootItem));
 
             QString newPath = filePath.mid(0,(filePath.lastIndexOf(separator)+1))+cap;
             QString newInc = incPath+cap;
@@ -311,12 +329,14 @@ void TreeModel::xBasicIncludes(QString &text)
             QList<QVariant> clist;
             inc = rx.cap(1);
             cap = rx.cap(2);
-            if(cap != "") {
-                cap = cap.remove("\"");
+            if(cap != "" && cap.indexOf("\"") > -1) {
+                QStringList caps = cap.split("\"");
+                cap = caps.at(1);
                 cap = cap.trimmed();
+                clist << cap;
+                if(!isDuplicate(rootItem, cap))
+                    rootItem->appendChild(new TreeItem(clist, rootItem));
             }
-            clist << cap;
-            rootItem->appendChild(new TreeItem(clist, rootItem));
         }
     }
 }
@@ -346,7 +366,8 @@ void TreeModel::addFileReferences(QString &filePath, QString &incPath, QString &
             if(!root)
                 inc = "  " + inc;
             clist << inc;
-            rootItem->appendChild(new TreeItem(clist, rootItem, filePath));
+            if(!isDuplicate(rootItem, cap))
+                rootItem->appendChild(new TreeItem(clist, rootItem, filePath));
         }
 
         int gotit = rx.indexIn(s);
@@ -354,12 +375,14 @@ void TreeModel::addFileReferences(QString &filePath, QString &incPath, QString &
             QList<QVariant> clist;
             inc = rx.cap(1);
             cap = rx.cap(2);
-            if(cap != "") {
-                cap = cap.remove("\"");
+            if(cap != "" && cap.indexOf("\"") > -1) {
+                QStringList caps = cap.split("\"");
+                cap = caps.at(1);
                 cap = cap.trimmed();
+                clist << cap;
+                if(!isDuplicate(rootItem, cap))
+                    rootItem->appendChild(new TreeItem(clist, rootItem));
             }
-            clist << cap;
-            rootItem->appendChild(new TreeItem(clist, rootItem));
 
             QString newPath = filePath.mid(0,(filePath.lastIndexOf(separator)+1));
             QFile file;

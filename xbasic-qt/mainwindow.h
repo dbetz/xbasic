@@ -82,7 +82,6 @@ public slots:
     void printFile(const QString &path = QString());    // not implemented
     void zipFile(const QString &path = QString());      // not implemented
     void about();
-    void languageHelp();
     void projectTreeClicked(QModelIndex index);
     void referenceTreeClicked(QModelIndex index);
     void closeTab(int index = 0);

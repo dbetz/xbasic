@@ -130,6 +130,7 @@ void Hardware::saveBoards()
         return;
     }
     QFile cfg(xBasicCfgFile);
+/*
     QFile bup(this->xBasicCfgFile+back);
     if(bup.exists()) bup.remove();
     if(!cfg.copy(this->xBasicCfgFile+back)) {
@@ -137,7 +138,7 @@ void Hardware::saveBoards()
         mbox.exec();
         return;
     }
-
+*/
     QByteArray barry = "";
     QString currentName = ui->comboBoxBoard->currentText().toUpper();
     XBasicBoard *board = xBasicConfig->getBoardByName(currentName);
@@ -148,10 +149,9 @@ void Hardware::saveBoards()
         QString name = ui->comboBoxBoard->itemText(n);
         XBasicBoard *board = xBasicConfig->getBoardByName(name);
         if(board == NULL && name == currentName)
-        {
             board = xBasicConfig->newBoard(name);
+        if(name == currentName)
             setBoardInfo(board);
-        }
         QString ba = board->getFormattedConfig();
         qDebug() << ba;
         barry.append(ba);
@@ -164,7 +164,7 @@ void Hardware::saveBoards()
     sbox.setInformativeText(tr("Save new ")+xBasicCfgFile+tr("?"));
 
     if(sbox.exec() == QMessageBox::Save) {
-        if(cfg.open(QIODevice::WriteOnly)) {
+        if(cfg.open(QIODevice::WriteOnly | QFile::Text)) {
             cfg.write(barry);
             cfg.flush();
             cfg.close();

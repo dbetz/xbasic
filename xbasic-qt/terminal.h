@@ -14,6 +14,9 @@ public:
     void accept();
     void reject();
 
+public slots:
+    void clearScreen();
+
 private:
     Console *termEditor;
 };

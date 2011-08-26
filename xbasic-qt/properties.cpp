@@ -50,7 +50,7 @@ Properties::Properties(QWidget *parent) : QDialog(parent)
         leditIncludes->setText(s);
     }
 
-    //parent->setWindowTitle(tr("xBasic IDE Compiler Properties"));
+    setWindowFlags(Qt::Tool);
     resize(400,260);
 }
 

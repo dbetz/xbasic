@@ -33,6 +33,9 @@ TARGET = xbasic-qt
 TEMPLATE = app
 
 DEFINES += QEXTSERIALPORT_LIB
+DEFINES += IDEVERSION="0"
+DEFINES += MINVERSION=1
+DEFINES += FIXVERSION=6
 
 INCLUDEPATH += \
     ../src/common \
@@ -86,5 +89,4 @@ win32 {
 }
 
 FORMS += \
-    properties.ui \
     hardware.ui
