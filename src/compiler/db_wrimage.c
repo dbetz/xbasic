@@ -29,7 +29,7 @@ int StartImage(ParseContext *c, const char *name)
         else {
             char tmpname[PATH_MAX];
             MakeTmpName(tmpname, name, section->name);
-            if (!(section->fp = xbCreateTmpFile(c->sys, tmpname, "w+")))
+            if (!(section->fp = xbCreateTmpFile(c->sys, tmpname, "w+b")))
                 return FALSE;
             section->offset = 0;
         }
