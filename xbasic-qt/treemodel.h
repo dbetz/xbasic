@@ -69,6 +69,8 @@ public:
 
     QString file(const QModelIndex &index) const;
 
+    bool isDuplicate(TreeItem *item, QString str);
+
     void xBasicIncludes(QString &text);
     void xBasicIncludes(QString &filePath, QString &incPath, QString &separator, QString &text, bool root = false);
     void addFileReferences(QString &filePath, QString &incPath, QString &separator, QString &text, bool root = false);

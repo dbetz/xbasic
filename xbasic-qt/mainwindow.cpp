@@ -113,9 +113,13 @@ void MainWindow::keyHandler(QKeyEvent* event)
     case Qt::Key_Backspace:
         key = '\b';
         break;
+    default:
+        if(key & Qt::Key_Escape)
+            return;
+        QChar c = event->text().at(0);
+        key = (int)c.toAscii();
+        break;
     }
-    if(key & Qt::Key_Escape)
-        return;
     QByteArray barry;
     barry.append((char)key);
     portListener->send(barry);
@@ -237,8 +241,12 @@ void MainWindow::closeEvent(QCloseEvent *event)
 
 void MainWindow::newFile()
 {
+    fileChangeDisable = true;
     setupEditor();
-    editorTabs->addTab(editors->at(editors->count()-1),(const QString&)untitledstr);
+    int tab = editors->count()-1;
+    editorTabs->addTab(editors->at(tab),(const QString&)untitledstr);
+    editorTabs->setCurrentIndex(tab);
+    fileChangeDisable = false;
 }
 
 void MainWindow::openFile(const QString &path)
@@ -296,9 +304,10 @@ void MainWindow::saveFile(const QString &path)
         QString fileName = editorTabs->tabToolTip(n);
         QString data = editors->at(n)->toPlainText();
 
+        this->editorTabs->setTabText(n,shortFileName(fileName));
         if (!fileName.isEmpty()) {
             QFile file(fileName);
-            if (file.open(QFile::WriteOnly)) {
+            if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
             }
@@ -313,9 +322,10 @@ void MainWindow::saveFileByTabIndex(int tab)
         QString fileName = editorTabs->tabToolTip(tab);
         QString data = editors->at(tab)->toPlainText();
 
+        this->editorTabs->setTabText(tab,shortFileName(fileName));
         if (!fileName.isEmpty()) {
             QFile file(fileName);
-            if (file.open(QFile::WriteOnly)) {
+            if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
             }
@@ -328,21 +338,22 @@ void MainWindow::saveAsFile(const QString &path)
 {
     try {
         int n = this->editorTabs->currentIndex();
-        //QString fileName = editors->at(n)->toolTip();
         QString data = editors->at(n)->toPlainText();
         QString fileName = path;
-        //QString data = editor->toPlainText();
 
-        if (fileName.isNull())
+        if (fileName.isEmpty())
             fileName = QFileDialog::getSaveFileName(this,
                 tr("Save As File"), "", "xBasic Files (*.bas)");
+
+        if (fileName.isEmpty())
+            return;
 
         this->editorTabs->setTabText(n,shortFileName(fileName));
         editorTabs->setTabToolTip(n,fileName);
 
         if (!fileName.isEmpty()) {
             QFile file(fileName);
-            if (file.open(QFile::WriteOnly)) {
+            if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
             }
@@ -452,6 +463,8 @@ void MainWindow::setCurrentPort(int index)
 
 void MainWindow::checkAndSaveFiles()
 {
+    if(projectModel == NULL)
+        return;
     QString title = projectModel->getTreeName();
     QString modTitle = title + " *";
     for(int tab = editorTabs->count()-1; tab > -1; tab--)
@@ -464,7 +477,6 @@ void MainWindow::checkAndSaveFiles()
         }
     }
 
-    //TreeItem *item = static_cast<TreeItem*>(root.internalPointer());
     int len = projectModel->rowCount();
     for(int n = 0; n < len; n++)
     {
@@ -531,7 +543,7 @@ QStringList MainWindow::getCompilerParameters(QString copts)
 
 int  MainWindow::runCompiler(QString copts)
 {
-    if(projectFile.isNull()) {
+    if(projectModel == NULL || projectFile.isNull()) {
         QMessageBox mbox(QMessageBox::Critical, "Error No Project",
             "Please select a tab and press F4 to set main project file.", QMessageBox::Ok);
         mbox.exec();
@@ -572,6 +584,8 @@ int  MainWindow::runCompiler(QString copts)
     }
 
     QString result = proc.readAll();
+    result += proc.readAllStandardOutput();
+    result += proc.readAllStandardError();
     int exitCode = proc.exitCode();
     int exitStatus = proc.exitStatus();
 
@@ -656,26 +670,24 @@ void MainWindow::setupHelpMenu()
     QMenu *helpMenu = new QMenu(tr("&Help"), this);
     menuBar()->addMenu(helpMenu);
 
-    helpMenu->addAction(QIcon(":/images/helphint.png"), tr("&About"), this, SLOT(about()));
-    helpMenu->addAction(QIcon(":/images/helpsymbol.png"), tr("Language Help"), this, SLOT(languageHelp()));
+    helpMenu->addAction(QIcon(":/images/helpsymbol.png"), tr("&About"), this, SLOT(about()));
 }
 
 void MainWindow::about()
 {
-    QMessageBox::about(this, tr("About xBasic"),
-                tr("<p><b>xBasic</b> allows running basic programs from " \
-                   "Propeller HUB or user defined external memory.</p>"));
+    QString version = QString("xBasic IDE Version %1.%2.%3")
+            .arg(IDEVERSION).arg(MINVERSION).arg(FIXVERSION);
+    QMessageBox::about(this, tr("About xBasic"), version + \
+                tr("<p><b>xBasic</b> runs BASIC programs from Propeller HUB<br/>" \
+                   "or from user defined external memory.</p>") +
+                tr("Visit <a href=\"www.MicroCSource.com/xbasic/help.htm\">MicroCSource.com</a> for more xBasic help."));
 }
 
-void MainWindow::languageHelp()
-{
-    QMessageBox::about(this, tr("Language Help"),
-                tr("<p><b>xBasic</b> language help ... TBD ..." \
-                   " </p>"));
-}
 
 void MainWindow::projectTreeClicked(QModelIndex index)
 {
+    if(projectModel == NULL)
+        return;
     QVariant vs = projectModel->data(index, Qt::DisplayRole);
     if(vs.canConvert(QVariant::String))
     {
@@ -752,11 +764,13 @@ void MainWindow::referenceTreeClicked(QModelIndex index)
 
 void MainWindow::closeTab(int index)
 {
+    fileChangeDisable = true;
     editors->at(index)->setPlainText("");
     editors->remove(index);
     if(editorTabs->count() == 1)
         newFile();
     editorTabs->removeTab(index);
+    fileChangeDisable = false;
 }
 
 void MainWindow::changeTab(int index)
