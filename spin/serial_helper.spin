@@ -241,4 +241,8 @@ p_tvpin       byte      0
 
 mm_cache      long      0
 mm_cache_mbox long      0
+mm_vm_mbox    long      def_vm_mbox
+mm_vm_state   long      def_vm_state
+mm_data_end   long      def_data_end
+mm_data       long      0
 
