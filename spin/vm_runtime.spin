@@ -68,7 +68,8 @@ PRI process_requests(mbox, state, sts)
       vm#STS_Trap:
         do_trap(mbox, state)
       vm#STS_Halt:
-        halt(mbox, state, string("HALT"))
+        'enable this for debugging
+        'halt(mbox, state, string("HALT"))
       vm#STS_StackOver:
         halt(mbox, state, string("STACK OVERFLOW"))
       vm#STS_DivideZero:
