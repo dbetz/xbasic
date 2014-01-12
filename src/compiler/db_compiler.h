@@ -35,7 +35,7 @@ typedef struct NodeListEntry NodeListEntry;
 typedef struct CaseListEntry CaseListEntry;
 
 /* lexical tokens */
-typedef enum {
+enum {
     T_NONE,
     T_REM = 0x100,  /* keywords start here */
     T_INCLUDE,
@@ -89,7 +89,7 @@ typedef enum {
     T_STRING,
     T_EOL,
     T_EOF
-} Token;
+};
 
 typedef enum {
     BLOCK_FUNCTION,
@@ -276,7 +276,7 @@ typedef struct {
     IncludedFile *currentInclude;   /* scan - file currently being included */
     char lineBuf[MAXLINE];          /* scan - line buffer */
     char *linePtr;                  /* scan - pointer to the current character */
-    Token savedToken;               /* scan - lookahead token */
+    int savedToken;                 /* scan - lookahead token */
     int tokenOffset;                /* scan - offset to the start of the current token */
     char token[MAXTOKEN];           /* scan - current token string */
     VMVALUE value;                  /* scan - current token integer value */
@@ -503,7 +503,7 @@ VMUVALUE AddLocalSymbolFixup(ParseContext *c, Symbol *symbol, VMUVALUE offset);
 void Fatal(ParseContext *c, const char *fmt, ...);
 
 /* db_statement.c */
-void ParseStatement(ParseContext *c, Token tkn);
+void ParseStatement(ParseContext *c, int tkn);
 void EndFunction(ParseContext *c);
 void CheckLabels(ParseContext *c);
 void DumpLabels(ParseContext *c);
@@ -524,11 +524,11 @@ int PushFile(ParseContext *c, const char *name);
 void ClearIncludedFiles(ParseContext *c);
 void CloseParseContext(ParseContext *c);
 int GetLine(ParseContext *c);
-void FRequire(ParseContext *c, Token requiredToken);
-void Require(ParseContext *c, Token token, Token requiredToken);
+void FRequire(ParseContext *c, int requiredToken);
+void Require(ParseContext *c, int token, int requiredToken);
 int GetToken(ParseContext *c);
-void SaveToken(ParseContext *c, Token token);
-char *TokenName(Token token);
+void SaveToken(ParseContext *c, int token);
+char *TokenName(int token);
 int SkipSpaces(ParseContext *c);
 int GetChar(ParseContext *c);
 void UngetC(ParseContext *c);

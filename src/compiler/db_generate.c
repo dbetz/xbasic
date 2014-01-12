@@ -31,7 +31,7 @@ static void code_call(ParseContext *c, ParseTreeNode *expr);
 static void code_globalref(ParseContext *c, Symbol *sym);
 static void code_arrayref(ParseContext *c, ParseTreeNode *expr, PVAL *pv);
 static void code_index(ParseContext *c, PValOp fcn, PVAL *pv);
-static void PushGenBlock(ParseContext *c, BlockType type);
+static void PushGenBlock(ParseContext *c, GenBlockType type);
 static void PopGenBlock(ParseContext *c);
 
 /* Generate - generate code for a function */
@@ -626,7 +626,7 @@ static void code_index(ParseContext *c, PValOp fcn, PVAL *pv)
 }
 
 /* PushGenBlock - push a generate block on the stack */
-static void PushGenBlock(ParseContext *c, BlockType type)
+static void PushGenBlock(ParseContext *c, GenBlockType type)
 {
     if (++c->gptr >= c->gtop)
         Fatal(c, "statements too deeply nested");

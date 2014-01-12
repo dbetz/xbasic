@@ -16,9 +16,9 @@
 #define DEF_PORT    "/dev/ttyUSB0"
 #endif
 #ifdef MACOSX
-#define DEF_PORT    "/dev/tty.usbserial-A3TNQL8K"
+#define DEF_PORT    "/dev/cu.usbserial-A8004ILf"
 #endif
-#define DEF_BOARD   "c3"
+#define DEF_BOARD   "hub"
 
 static void Usage(void);
 static char *ConstructOutputName(const char *infile, char *outfile, char *ext);
@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     int writeEepromLoader = FALSE;
     int runImage = FALSE;
     int terminalMode = FALSE;
-    int step = FALSE;
     int compilerFlags = 0;
+    int runFlags = 0;
     System *sys;
     int i;
     
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
                 writeEepromLoader = TRUE;
                 break;
             case 's':
-                step = TRUE;
+                runFlags |= RUN_STEP;
                 // fall through
             case 'r':
                 runImage = TRUE;
@@ -96,6 +96,9 @@ int main(int argc, char *argv[])
                 terminalMode = TRUE;
                 break;
             case 'd':
+                runFlags |= RUN_PAUSE;
+                break;
+            case 'D':
                 compilerFlags |= COMPILER_DEBUG;
                 break;
             case 'v':
@@ -195,7 +198,7 @@ int main(int argc, char *argv[])
     
     /* run the loaded image if requested */
     if (runImage) {
-        if (!RunLoadedProgram(step)) {
+        if (!RunLoadedProgram(runFlags)) {
             fprintf(stderr, "error: run failed\n");
             return 1;
         }
@@ -218,7 +221,8 @@ usage: xbcom\n\
          [ -e ]          write loader to eeprom\n\
          [ -r ]          load and run the compiled program\n\
          [ -t ]          enter terminal mode after running the program\n\
-         [ -d ]          display compiler debug information\n\
+         [ -d ]          add a delay to allow the terminal emulator to start\n\
+         [ -D ]          display compiler debug information\n\
          [ -v ]          display verbose compiler statistics\n\
          [ -I <path> ]   set the path for include files\n\
          <name>          file to compile\n\

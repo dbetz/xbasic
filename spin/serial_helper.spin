@@ -214,7 +214,10 @@ PRI RUN_handler(packet) | main, stack, stack_size, count, p, i, base, offset, si
 
   runtime.init_serial(p_baudrate, p_rxpin, p_txpin)
 
-  if long[packet] == 0
+  if (long[packet] & 2) <> 0
+    waitcnt(clkfreq + cnt)
+
+  if (long[packet] & 1) == 0
     runtime.run(mm_vm_mbox, mm_vm_state)
   else
     runtime.single_step(mm_vm_mbox, mm_vm_state)
