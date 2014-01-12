@@ -30,7 +30,7 @@ static SystemOps myOps = {
 int main(int argc, char *argv[])
 {
     char *infile = NULL, fullName[FILENAME_MAX];
-    int singleStepMode = FALSE;
+    int runFlags = 0;
     int terminalMode = FALSE;
     BoardConfig *config;
     char *port, *board;
@@ -57,6 +57,9 @@ int main(int argc, char *argv[])
                 else
                     Usage();
                 break;
+            case 'd':
+                runFlags |= RUN_PAUSE;
+                break;
             case 'p':
                 if(argv[i][2])
                     port = &argv[i][2];
@@ -78,7 +81,7 @@ int main(int argc, char *argv[])
                 }
                 break;
             case 's':
-                singleStepMode = TRUE;
+                runFlags |= RUN_STEP;
                 break;
             case 't':
                 terminalMode = TRUE;
@@ -122,7 +125,7 @@ int main(int argc, char *argv[])
     }
     
     /* run the loaded image */
-    if (!RunLoadedProgram(singleStepMode)) {
+    if (!RunLoadedProgram(runFlags)) {
         fprintf(stderr, "error: run failed\n");
         return 1;
     }

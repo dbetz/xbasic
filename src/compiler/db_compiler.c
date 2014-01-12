@@ -124,7 +124,7 @@ int Compile(ParseContext *c, const char *name)
     
         /* get the next line */
         while (GetLine(c)) {
-            Token tkn;
+            int tkn;
             if ((tkn = GetToken(c)) != T_EOL)
                 ParseStatement(c, tkn);
         }

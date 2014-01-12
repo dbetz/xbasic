@@ -101,6 +101,7 @@ VMUVALUE ValueSize(Type *type, VMUVALUE size)
         valueSize = ROUND_TO_WORDS(sizeInBytes) / sizeof(VMVALUE);
         break;
     default:
+        valueSize = 0; // not reached
         break;
     }
 
@@ -122,6 +123,7 @@ static VMUVALUE ValueByteSize(Type *type)
         size = 1;
         break;
     default:
+        size = 0;   // not reached
         break;
     }
 

@@ -65,7 +65,7 @@ static VMVALUE ParseIntegerConstant(ParseContext *c);
 */
 
 /* ParseStatement - parse a statement */
-void ParseStatement(ParseContext *c, Token tkn)
+void ParseStatement(ParseContext *c, int tkn)
 {
 again:
     /* dispatch on the statement keyword */
@@ -231,7 +231,7 @@ static void SetIntegerOption(ParseContext *c, int *pValue)
 static void ParseDef(ParseContext *c)
 {
     char name[MAXTOKEN];
-    Token tkn;
+    int tkn;
 
     /* get the name being defined */
     FRequire(c, T_IDENTIFIER);
@@ -293,7 +293,7 @@ static void ParseFunctionDef_pass1(ParseContext *c, char *name)
 {
     Symbol *sym;
     Type *type;
-    Token tkn;
+    int tkn;
     
     /* make the function type */
     type = NewGlobalType(c, TYPE_FUNCTION);
@@ -449,7 +449,7 @@ static void ParseDim(ParseContext *c)
     VMVALUE value = 0;
     VMUVALUE size;
     int isArray;
-    Token tkn;
+    int tkn;
 
     /* parse variable declarations */
     do {
@@ -562,7 +562,7 @@ static Type *ParseVariableDecl(ParseContext *c, char *name, VMUVALUE *pSize)
 {
     Type *type = &c->integerType;
     int isArray = FALSE;
-    Token tkn;
+    int tkn;
 
     /* parse the variable name */
     FRequire(c, T_IDENTIFIER);
@@ -658,7 +658,7 @@ static VMUVALUE ParseArrayInitializers(ParseContext *c, Type *type, VMUVALUE siz
     uint8_t *bp = (uint8_t *)c->cptr;
     VMUVALUE remaining = size;
     VMUVALUE count = 0;
-    Token tkn;
+    int tkn;
 
     /* handle a bracketed list of initializers */
     if ((tkn = GetToken(c)) == '{') {
@@ -805,7 +805,7 @@ static void ClearArrayInitializers(ParseContext *c, VMVALUE size)
 static void ParseImpliedLetOrFunctionCall(ParseContext *c)
 {
     ParseTreeNode *node, *expr;
-    Token tkn;
+    int tkn;
     expr = ParsePrimary(c);
     switch (tkn = GetToken(c)) {
     case '=':
@@ -838,7 +838,7 @@ static void ParseLet(ParseContext *c)
 static void ParseIf(ParseContext *c)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeIfStatement);
-    Token tkn;
+    int tkn;
     node->u.ifStatement.test = ParseExpr(c);
     AddNodeToList(c, &c->bptr->pNextStatement, node);
     FRequire(c, T_THEN);
@@ -918,7 +918,7 @@ static void ParseSelect(ParseContext *c)
 static void ParseCase(ParseContext *c)
 {
     ParseTreeNode *node;
-    Token tkn;
+    int tkn;
     
     if (c->bptr->type == BLOCK_CASE)
         PopBlock(c);
@@ -1001,7 +1001,7 @@ static void ParseEnd(ParseContext *c)
 static void ParseFor(ParseContext *c)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeForStatement);
-    Token tkn;
+    int tkn;
 
     AddNodeToList(c, &c->bptr->pNextStatement, node);
 
@@ -1134,7 +1134,7 @@ static void ParseAsm(ParseContext *c)
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeAsmStatement);
     uint8_t *start = c->cptr;
     int length;
-    Token tkn;
+    int tkn;
     
     /* check for the end of the 'ASM' statement */
     FRequire(c, T_EOL);
@@ -1278,7 +1278,7 @@ static void ParseGoto(ParseContext *c)
 static void ParseReturn(ParseContext *c)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeReturnStatement);
-    Token tkn;
+    int tkn;
             
     /* return with no value returns zero */
     if ((tkn = GetToken(c)) == T_EOL)
@@ -1299,7 +1299,7 @@ static void ParseReturn(ParseContext *c)
 static void ParseInput(ParseContext *c)
 {
     ParseTreeNode *devExpr, *expr;
-    Token tkn;
+    int tkn;
 
     /* check for file input */
     if ((tkn = GetToken(c)) == '#') {
@@ -1360,7 +1360,7 @@ static void ParsePrint(ParseContext *c)
 {
     ParseTreeNode *devExpr, *expr;
     int needNewline = TRUE;
-    Token tkn;
+    int tkn;
 
     /* check for file output */
     if ((tkn = GetToken(c)) == '#') {

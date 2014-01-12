@@ -256,9 +256,9 @@ int WriteFlashLoaderToEEPROM(System *sys, BoardConfig *config, char *port)
 	return TRUE;
 }
 
-int RunLoadedProgram(int step)
+int RunLoadedProgram(int flags)
 {
-    VMUVALUE arg = (VMUVALUE)step;
+    VMUVALUE arg = (VMUVALUE)flags;
 	return SendPacket(TYPE_RUN, (uint8_t *)&arg, sizeof(VMUVALUE));
 }
 

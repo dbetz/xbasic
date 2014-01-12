@@ -15,10 +15,10 @@
 /* keyword table */
 static struct {
     char *keyword;
-    Token token;
+    int token;
 } ktab[] = {
 
-/* these must be in the same order as the Token enum */
+/* these must be in the same order as the int enum */
 {   "REM",      T_REM       },
 {   "OPTION",   T_OPTION    },
 {   "INCLUDE",  T_INCLUDE   },
@@ -205,13 +205,13 @@ int GetLine(ParseContext *c)
 }
 
 /* FRequire - fetch a token and check it */
-void FRequire(ParseContext *c, Token requiredToken)
+void FRequire(ParseContext *c, int requiredToken)
 {
     Require(c, GetToken(c), requiredToken);
 }
 
 /* Require - check for a required token */
-void Require(ParseContext *c, Token token, Token requiredToken)
+void Require(ParseContext *c, int token, int requiredToken)
 {
     char tknbuf[MAXTOKEN];
     if (token != requiredToken) {
@@ -238,13 +238,13 @@ int GetToken(ParseContext *c)
 }
 
 /* SaveToken - save a token */
-void SaveToken(ParseContext *c, Token token)
+void SaveToken(ParseContext *c, int token)
 {
     c->savedToken = token;
 }
 
 /* TokenName - get the name of a token */
-char *TokenName(Token token)
+char *TokenName(int token)
 {
     static char nameBuf[4];
     char *name;

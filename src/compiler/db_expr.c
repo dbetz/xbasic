@@ -29,7 +29,7 @@ static ParseTreeNode *MakeBinaryOpNode(ParseContext *c, int op, ParseTreeNode *l
 ParseTreeNode *ParseExpr(ParseContext *c)
 {
     ParseTreeNode *node;
-    Token tkn;
+    int tkn;
     node = ParseExpr2(c);
     if ((tkn = GetToken(c)) == T_OR) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeDisjunction);
@@ -56,7 +56,7 @@ ParseTreeNode *ParseExpr(ParseContext *c)
 static ParseTreeNode *ParseExpr2(ParseContext *c)
 {
     ParseTreeNode *node;
-    Token tkn;
+    int tkn;
     node = ParseExpr3(c);
     if ((tkn = GetToken(c)) == T_AND) {
         ParseTreeNode *node2 = NewParseTreeNode(c, NodeTypeConjunction);
@@ -83,7 +83,7 @@ static ParseTreeNode *ParseExpr2(ParseContext *c)
 static ParseTreeNode *ParseExpr3(ParseContext *c)
 {
     ParseTreeNode *expr;
-    Token tkn;
+    int tkn;
     expr = ParseExpr4(c);
     while ((tkn = GetToken(c)) == '^')
         expr = MakeBinaryOpNode(c, OP_BXOR, expr, ParseExpr4(c));
@@ -95,7 +95,7 @@ static ParseTreeNode *ParseExpr3(ParseContext *c)
 static ParseTreeNode *ParseExpr4(ParseContext *c)
 {
     ParseTreeNode *expr;
-    Token tkn;
+    int tkn;
     expr = ParseExpr5(c);
     while ((tkn = GetToken(c)) == '|')
         expr = MakeBinaryOpNode(c, OP_BOR, expr, ParseExpr5(c));
@@ -107,7 +107,7 @@ static ParseTreeNode *ParseExpr4(ParseContext *c)
 static ParseTreeNode *ParseExpr5(ParseContext *c)
 {
     ParseTreeNode *expr;
-    Token tkn;
+    int tkn;
     expr = ParseExpr6(c);
     while ((tkn = GetToken(c)) == '&')
         expr = MakeBinaryOpNode(c, OP_BAND, expr, ParseExpr6(c));
@@ -119,7 +119,7 @@ static ParseTreeNode *ParseExpr5(ParseContext *c)
 static ParseTreeNode *ParseExpr6(ParseContext *c)
 {
     ParseTreeNode *expr, *expr2;
-    Token tkn;
+    int tkn;
     expr = ParseExpr7(c);
     while ((tkn = GetToken(c)) == '=' || tkn == T_NE) {
         int op;
@@ -146,7 +146,7 @@ static ParseTreeNode *ParseExpr6(ParseContext *c)
 static ParseTreeNode *ParseExpr7(ParseContext *c)
 {
     ParseTreeNode *expr, *expr2;
-    Token tkn;
+    int tkn;
     expr = ParseExpr8(c);
     while ((tkn = GetToken(c)) == '<' || tkn == T_LE || tkn == T_GE || tkn == '>') {
         int op;
@@ -179,7 +179,7 @@ static ParseTreeNode *ParseExpr7(ParseContext *c)
 static ParseTreeNode *ParseExpr8(ParseContext *c)
 {
     ParseTreeNode *expr, *expr2;
-    Token tkn;
+    int tkn;
     expr = ParseExpr9(c);
     while ((tkn = GetToken(c)) == T_SHL || tkn == T_SHR) {
         int op;
@@ -206,7 +206,7 @@ static ParseTreeNode *ParseExpr8(ParseContext *c)
 static ParseTreeNode *ParseExpr9(ParseContext *c)
 {
     ParseTreeNode *expr, *expr2;
-    Token tkn;
+    int tkn;
     expr = ParseExpr10(c);
     while ((tkn = GetToken(c)) == '+' || tkn == '-') {
         int op;
@@ -233,7 +233,7 @@ static ParseTreeNode *ParseExpr9(ParseContext *c)
 static ParseTreeNode *ParseExpr10(ParseContext *c)
 {
     ParseTreeNode *node, *node2;
-    Token tkn;
+    int tkn;
     node = ParseExpr11(c);
     while ((tkn = GetToken(c)) == '*' || tkn == '/' || tkn == T_MOD) {
         int op;
@@ -263,7 +263,7 @@ static ParseTreeNode *ParseExpr10(ParseContext *c)
 static ParseTreeNode *ParseExpr11(ParseContext *c)
 {
     ParseTreeNode *node;
-    Token tkn;
+    int tkn;
     switch (tkn = GetToken(c)) {
     case '+':
         node = ParsePrimary(c);
@@ -330,7 +330,7 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
 {
     ParseTreeNode *node = NewParseTreeNode(c, NodeTypeFunctionCall);
     Symbol *arg;
-    Token tkn;
+    int tkn;
 
     /* intialize the function call node */
     node->type = functionNode->type->u.functionInfo.returnType;
@@ -378,7 +378,7 @@ static ParseTreeNode *ParseCall(ParseContext *c, ParseTreeNode *functionNode)
 static ParseTreeNode *ParseSimplePrimary(ParseContext *c)
 {
     ParseTreeNode *node;
-    Token tkn;
+    int tkn;
     switch (tkn = GetToken(c)) {
     case '(':
         node = ParseExpr(c);
@@ -453,6 +453,7 @@ ParseTreeNode *GetSymbolRef(ParseContext *c, char *name)
                 break;
             default:
                 ParseError(c, "unknown symbol type");
+                node = NULL; // not reached
                 break;
             }
         }
