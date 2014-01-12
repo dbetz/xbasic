@@ -2,7 +2,8 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "xBasic IDE"
-#define MyAppVersion "0.17"
+#define MyDocName "xBasic"
+#define MyAppVersion "0.19"
 #define MyAppPublisher "MicroCSource"
 #define MyAppURL "www.MicroCSource.com"
 #define MyAppExeName "bin\xbasic-qt.exe"
@@ -16,7 +17,7 @@
 ; NOTE: The value of AppId uniquely identifies this application.
 ; Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{C0D84661-EDCC-4299-BF1E-5C00D542D638}
+AppID={{C0D84661-EDCC-4299-BF1E-5C00D542D638}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -27,9 +28,12 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\xbasic-qt-build-desktop
-OutputBaseFilename=xBasicIDE_0_17_setup
-Compression=lzma
-SolidCompression=yes
+OutputBaseFilename=xBasicIDE_0_19_setup
+Compression=lzma/Max
+SolidCompression=true
+AlwaysShowDirOnReadyPage=true
+UserInfoPage=false
+UsePreviousUserInfo=false
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -41,12 +45,18 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 [Files]
 Source: "..\xbasic-qt-build-desktop\debug\xbasic-qt.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\xbcom-qt-build-desktop\debug\xbcom-qt.exe"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#MyQtPath}\mingw\bin\libgcc_s_dw2-1.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "{#MyQtPath}\mingw\bin\mingwm10.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+;Source: "XBASICIDE_LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LGPL_2_1.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "LGPL_2_1.txt"; DestDir: "{app}"; Flags: ignoreversion
+;Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
+;Source: "..\doc\xBasicIDEUserGuide.doc"; DestDir: "{app}"; Flags: ignoreversion
+
+;Source: "{#MyQtPath}\mingw\bin\libgcc_s_dw2-1.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+;Source: "{#MyQtPath}\mingw\bin\mingwm10.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#MyQtPath}\qt\bin\QtCored4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#MyQtPath}\qt\bin\QtGuid4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-Source: "..\include\*"; DestDir: "{app}\include"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\samples\*"; DestDir: "{app}\samples"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\include\*"; DestDir: "{code:GetDataDir}\include"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\samples\*"; DestDir: "{code:GetDataDir}\samples"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
 [Icons]
@@ -56,11 +66,46 @@ Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: 
 Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: quicklaunchicon
 
 [Run]
-Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, "&", "&&")}}"; Flags: nowait postinstall skipifsilent
+Filename: {app}\{#MyAppExeName}; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, "&", "&&")}}"; Flags: skipifsilent NoWait PostInstall; 
 
 [Registry]
-Root: HKCU; Subkey: "Software\MicroCSource"; Flags: uninsdeletekeyifempty createvalueifdoesntexist
-Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; Flags: uninsdeletekey createvalueifdoesntexist
-Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; Flags: createvalueifdoesntexist; ValueType: string; ValueName: "Compiler"; ValueData: "{app}\bin\xbcom-qt.exe"
-Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; Flags: createvalueifdoesntexist; ValueType: string; ValueName: "Includes"; ValueData: "{app}\include\"
-Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; Flags: createvalueifdoesntexist; ValueType: string; ValueName: "LastFileName"; ValueData: "{app}\samples\fibo.bas"
+Root: HKCU; SubKey: Software\MicroCSource; Flags: UninsDeleteKey; 
+Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; Flags: UninsDeleteKey; 
+Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; ValueType: string; ValueName: Compiler; ValueData: {app}\bin\xbcom-qt.exe; Flags: UninsDeleteKey; 
+Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; ValueType: string; ValueName: Includes; ValueData: {code:GetDataDir}\include\; Flags: UninsDeleteKey; 
+Root: HKCU; Subkey: "Software\MicroCSource\xBasic QtGUI"; ValueType: string; ValueName: LastFileName; ValueData: {code:GetDataDir}\samples\fibo.bas; Flags: UninsDeleteKey; 
+
+[Code]
+var
+  DataDirPage: TInputDirWizardPage;
+  
+procedure InitializeWizard;
+begin
+  { Create the pages }
+
+  DataDirPage := CreateInputDirPage(wpSelectDir,
+    'Select Workspace Directory', 'Where should xBasic source files be installed?',
+    'Select the folder where Setup should install xBasic source files, then click Next.',
+    False, '');
+  DataDirPage.Add('');
+  DataDirPage.Values[0] := GetPreviousData('DataDir', ExpandConstant('{userdocs}')+'\xBasic');
+end;
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
+  MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+var
+  S: String;
+begin
+  { Fill the 'Ready Memo' with the normal settings and the custom settings }
+  S := '';
+  S := S + MemoGroupInfo + Newline + Newline;
+  S := S + MemoDirInfo + Newline + Newline;
+  S := S + 'xBasic source folder:' + Newline + Space + DataDirPage.Values[0] + NewLine;
+  Result := S;
+end;
+
+function GetDataDir(Param: String): String;
+begin
+  { Return the selected DataDir }
+  Result := DataDirPage.Values[0];
+end;
