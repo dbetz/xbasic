@@ -42,10 +42,16 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     /* start with an empty file if fresh install */
     newFile();
 
-    /* status bar ... do we need this? how about a progressbar?
+    /* status bar for progressbar */
     QStatusBar *statusBar = new QStatusBar(this);
     this->setStatusBar(statusBar);
-    */
+    progress = new QProgressBar();
+    progress->setMaximumSize(200,25);
+    progress->setValue(0);
+
+    statusBar->addWidget(progress);
+    statusBar->setLayoutDirection(Qt::RightToLeft);
+
 
     /* get app settings at startup and before any compiler call */
     getApplicationSettings();
@@ -257,12 +263,15 @@ void MainWindow::openFile(const QString &path)
         fileName = QFileDialog::getOpenFileName(this,
             tr("Open File"), "", "xBasic Files (*.bas)");
     openFileName(fileName);
+    setProject();
+    /*
     if(projectFile.length() == 0) {
         setProject();
     }
     else if(editorTabs->count() == 1) {
         setProject();
     }
+    */
 }
 
 void MainWindow::openFileName(QString fileName)
@@ -292,6 +301,7 @@ void MainWindow::openFileName(QString fileName)
             newFile();
             setEditorTab(editorTabs->count()-1, sname, fileName, data);
             file.close();
+            setProject();
         }
     }
 }
@@ -526,13 +536,14 @@ QStringList MainWindow::getCompilerParameters(QString copts)
     boardName = cbBoard->itemText(cbBoard->currentIndex());
 
     QStringList args;
-    args.append(tr("-b"));
+    args.append(("-d")); // tell compiler to insert a delay for terminal startup
+    args.append(("-b"));
     args.append(boardName);
-    args.append(tr("-p"));
+    args.append(("-p"));
     args.append(portName);
-    args.append(tr("-I"));
+    args.append(("-I"));
     args.append(xBasicIncludes);
-    args.append(tr("-I"));
+    args.append(("-I"));
     args.append(srcpath);
     args.append(projectFile);
     args.append(copts);
@@ -555,12 +566,17 @@ int  MainWindow::runCompiler(QString copts)
         return -1;
     }
 
+    progress->setValue(0);
+
     QStringList args = getCompilerParameters(copts);
 
     btnConnected->setChecked(false);
     connectButton();            // disconnect uart before use
 
+    progress->setValue(5);
+
     checkAndSaveFiles();
+    progress->setValue(10);
 
     QMessageBox mbox;
     mbox.setStandardButtons(QMessageBox::Ok);
@@ -571,17 +587,25 @@ int  MainWindow::runCompiler(QString copts)
 
     proc.start(xBasicCompiler,args);
 
+    progress->setValue(15);
+
     if(!proc.waitForStarted()) {
+        progress->setValue(100);
         mbox.setInformativeText(tr("Could not start compiler."));
         mbox.exec();
         return -1;
     }
 
+    progress->setValue(50);
+
     if(!proc.waitForFinished()) {
+        progress->setValue(100);
         mbox.setInformativeText(tr("Error waiting for compiler to finish."));
         mbox.exec();
         return -1;
     }
+
+    progress->setValue(60);
 
     QString result = proc.readAll();
     result += proc.readAllStandardOutput();
@@ -593,29 +617,33 @@ int  MainWindow::runCompiler(QString copts)
 
     if(exitStatus == QProcess::CrashExit)
     {
+        progress->setValue(100);
         mbox.setText(tr("xBasic Compiler Crashed"));
         mbox.exec();
         return -1;
     }
     if(exitCode != 0)
     {
+        progress->setValue(100);
         if(result.toLower().indexOf("helper") > 0) {
             mbox.setInformativeText(result +
                  "\nDid you set the right board type?" +
                  "\nHUB and C3 set 80MHz clock." +
                  "\nHUB96 and SSF set 96MHz clock.");
         }
-        mbox.setText(tr("xBasic Compiler Error"));
+        mbox.setText(tr("xBasic Compile Error"));
         mbox.exec();
         return -1;
     }
     if(result.indexOf("error") > -1)
     { // just in case we get an error without exitCode
-        mbox.setText(tr("xBasic Compiler Error"));
+        progress->setValue(100);
+        mbox.setText(tr("xBasic Compile Error"));
         mbox.exec();
         return -1;
     }
 
+    progress->setValue(100);
     return 0;
 }
 
@@ -775,9 +803,10 @@ void MainWindow::closeTab(int index)
 
 void MainWindow::changeTab(int index)
 {
+    setProject();
+    /*
     if(editorTabs->count() == 1)
         setProject();
-    /*
     QString fileName = editorTabs->tabToolTip(index);
     QString text = editors->at(index)->toPlainText();
 
@@ -972,7 +1001,7 @@ void MainWindow::setupFileMenu()
     QMenu *projMenu = new QMenu(tr("&Project"), this);
     menuBar()->addMenu(projMenu);
 
-    projMenu->addAction(QIcon(":/images/treeproject.png"), tr("Set Project"), this, SLOT(setProject()), Qt::Key_F4);
+    //projMenu->addAction(QIcon(":/images/treeproject.png"), tr("Set Project"), this, SLOT(setProject()), Qt::Key_F4);
     projMenu->addAction(QIcon(":/images/properties.png"), tr("Properties"), this, SLOT(properties()), Qt::Key_F5);
     projMenu->addAction(QIcon(":/images/hardware.png"), tr("Configuration"), this, SLOT(hardware()), Qt::Key_F6);
 
@@ -1059,10 +1088,12 @@ void MainWindow::setupToolBars()
 
     propToolBar = addToolBar(tr("Properties"));
 
+    /*
     QToolButton *btnProjectApp = new QToolButton(this);
     addToolButton(propToolBar, btnProjectApp, QString(":/images/treeproject.png"));
     connect(btnProjectApp,SIGNAL(clicked()),this,SLOT(setProject()));
     btnProjectApp->setToolTip(tr("Set Project File"));
+    */
 
     QToolButton *btnProjectProperties = new QToolButton(this);
     addToolButton(propToolBar, btnProjectProperties, QString(":/images/properties.png"));

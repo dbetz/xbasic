@@ -48,7 +48,7 @@ Highlighter::Highlighter(QTextDocument *parent)
 {
     HighlightingRule rule;
 
-    keywordFormat.setForeground(Qt::black);
+    keywordFormat.setForeground(Qt::blue);
     keywordFormat.setFontWeight(QFont::Bold);
     QStringList keywordPatterns;
     keywordPatterns << "\\b[Ii][Nn][Cc][Ll][Uu][Dd][Ee]\\b"
@@ -92,23 +92,23 @@ Highlighter::Highlighter(QTextDocument *parent)
 
 //! [2]
     classFormat.setFontWeight(QFont::Bold);
-    classFormat.setForeground(Qt::blue);
+    classFormat.setForeground(Qt::darkGreen);
     rule.pattern = QRegExp("\\b[Rr][Ee][Mm][^\n]*");
     rule.format = classFormat;
     highlightingRules.append(rule);
 //! [2]
 
 //! [3]
-    singleLineCommentFormat.setForeground(Qt::red);
+    singleLineCommentFormat.setForeground(Qt::darkGreen);
     rule.pattern = QRegExp("//[^\n]*");
     rule.format = singleLineCommentFormat;
     highlightingRules.append(rule);
 
-    multiLineCommentFormat.setForeground(Qt::red);
+    multiLineCommentFormat.setForeground(Qt::darkGreen);
 //! [3]
 
 //! [4]
-    quotationFormat.setForeground(Qt::darkGreen);
+    quotationFormat.setForeground(Qt::red);
     rule.pattern = QRegExp("\".*\"");
     rule.format = quotationFormat;
     highlightingRules.append(rule);

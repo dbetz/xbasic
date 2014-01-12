@@ -173,6 +173,7 @@ private:
     QProcess    *proc;
 
     Hardware    *hardwareDialog;
+    QProgressBar *progress;
 };
 //! [0]
 

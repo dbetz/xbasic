@@ -35,7 +35,7 @@ TEMPLATE = app
 DEFINES += QEXTSERIALPORT_LIB
 DEFINES += IDEVERSION="0"
 DEFINES += MINVERSION=1
-DEFINES += FIXVERSION=7
+DEFINES += FIXVERSION=8
 
 INCLUDEPATH += \
     ../src/common \
@@ -54,7 +54,9 @@ SOURCES += main.cpp\
     xbasicconfig.cpp \
     xbasicboard.cpp \
     console.cpp \
-    hardware.cpp
+    hardware.cpp \
+    progressdialog.cpp \
+    progressform.cpp
 
 HEADERS  += mainwindow.h \
     highlighter.h \
@@ -69,7 +71,9 @@ HEADERS  += mainwindow.h \
     xbasicconfig.h \
     xbasicboard.h \
     console.h \
-    hardware.h
+    hardware.h \
+    progressdialog.h \
+    progressform.h
 
 OTHER_FILES +=
 
