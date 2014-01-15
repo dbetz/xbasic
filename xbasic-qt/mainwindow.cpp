@@ -4,6 +4,9 @@
 #include "qextserialenumerator.h"
 #include "PropellerID.h"
 
+#include <qt_windows.h>
+#include <dbt.h>
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     /* setup application registry info */
@@ -73,7 +76,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     portListener = new PortListener();
 
     /* get available ports at startup */
-    //enumeratePorts();
+    enumeratePorts();
+
+    /* connect windows USB change detect signal to enumerator */
+    connect(this,SIGNAL(doPortEnumerate()),this, SLOT(enumeratePorts()));
 
     /* these are read once per app startup */
     QVariant lastportv  = settings->value(lastPortNameKey);
@@ -125,6 +131,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     hardwareDialog = new Hardware(this);
     connect(hardwareDialog,SIGNAL(accepted()),this,SLOT(initBoardTypes()));
+}
+
+bool MainWindow::winEvent(MSG *message, long *result)
+{
+    if (message->message==WM_DEVICECHANGE)
+    {
+        qDebug() << ("WM_DEVICECHANGE message received");
+        if (message->wParam==DBT_DEVICEARRIVAL) {
+            qDebug() << ("A new device has arrived");
+            emit doPortEnumerate();
+        }
+        if (message->wParam==DBT_DEVICEREMOVECOMPLETE) {
+            qDebug() << ("A device has been removed");
+            emit doPortEnumerate();
+        }
+    }
+    return false;
 }
 
 void MainWindow::keyHandler(QKeyEvent* event)
@@ -592,12 +615,16 @@ int  MainWindow::runCompiler(QString copts)
         return -1;
     }
 
+#ifdef AUTOPORT
+    if(copts.compare("-v")) {
+        checkConfigSerialPort();
+    }
+#endif
     setCurrentPort(cbPort->currentIndex());
 
     QString result;
     int exitCode = 0;
     int exitStatus = 0;
-    QStringList rlist;
 
     int index = editorTabs->currentIndex();
     QString fileName = editorTabs->tabToolTip(index);
@@ -748,11 +775,30 @@ void MainWindow::procReadyRead()
             }
         }
     }
-    bool iserror = compileResult.contains("error:",Qt::CaseInsensitive);
+    int vmsize = 1916;
+
+    bool isCompileSz = bytes.contains(" entry") && bytes.contains(" base") &&
+                       bytes.contains(" file offset") && bytes.contains(" size");
+    if(isCompileSz) {
+        for (int n = 0; n < lines.length(); n++) {
+            QString line = lines[n];
+            if(line.endsWith(" size")) {
+                QStringList sl = line.split(" ", QString::SkipEmptyParts);
+                if(sl.count() > 1) {
+                    bool ok;
+                    int num = QString(sl[0]).toInt(&ok, 16);
+                    sizeLabel->setText(QString::number(vmsize+num)+tr(" Total Bytes"));
+                    return;
+                }
+            }
+        }
+    }
+
     for (int n = 0; n < lines.length(); n++) {
         QString line = lines[n];
         if(line.length() > 0) {
             /*
+            bool iserror = compileResult.contains("error:",Qt::CaseInsensitive);
             if(iserror && line.contains(" line ", Qt::CaseInsensitive)) {
                 QStringList sl = line.split(" ", QString::SkipEmptyParts);
                 if(sl.count() > 1) {
@@ -767,16 +813,12 @@ void MainWindow::procReadyRead()
                 }
             }
             */
-            if(line.contains("Writing")) {
-                QStringList sl = line.split(" ");
-                sizeLabel->setText(sl[1]+tr(" Total Bytes"));
-            }
             if(line.contains("Propeller Version",Qt::CaseInsensitive)) {
                 msgLabel->setText(line+eol);
                 progress->setValue(0);
             }
             else
-            if(line.contains("loading",Qt::CaseInsensitive)) {
+            if(line.contains("loading image",Qt::CaseInsensitive)) {
                 progMax = 0;
                 progress->setValue(0);
                 msgLabel->setText(line+eol);
@@ -800,6 +842,8 @@ void MainWindow::procReadyRead()
                 if(progMax == 0) {
                     QString bs = line.mid(0,line.indexOf(" "));
                     progMax = bs.toInt();
+                    // include VM size
+                    sizeLabel->setText(QString::number(vmsize+progMax)+tr(" Total Bytes"));
                     progMax /= 1024;
                     progMax++;
                     progCount = 0;
@@ -827,22 +871,16 @@ void MainWindow::programBuild()
 
 void MainWindow::programBurnEE()
 {
-    if(!cbPort->count())
-        enumeratePorts();
     runCompiler("-e");
 }
 
 void MainWindow::programRun()
 {
-    if(!cbPort->count())
-        enumeratePorts();
     runCompiler("-r");
 }
 
 void MainWindow::programDebug()
 {
-    if(!cbPort->count())
-        enumeratePorts();
     if(runCompiler("-r"))
         return; // don't start terminal if compile failed
 
@@ -1041,16 +1079,38 @@ void MainWindow::setEditorTab(int num, QString shortName, QString fileName, QStr
     editorTabs->setCurrentIndex(num);
 }
 
+void MainWindow::checkConfigSerialPort()
+{
+    if(!cbPort->count()) {
+        enumeratePorts();
+    } else {
+        QString name = cbPort->currentText();
+        QList<QextPortInfo> ports = QextSerialEnumerator::getPorts();
+        int index = -1;
+        for (int i = 0; i < ports.size(); i++) {
+            if(ports.at(i).portName.contains(name, Qt::CaseInsensitive)) {
+                index = i;
+                break;
+            }
+        }
+        if(index < 0) {
+            enumeratePorts();
+        }
+    }
+}
+
 void MainWindow::enumeratePorts()
 {
     if(cbPort != NULL) cbPort->clear();
     QList<QextPortInfo> ports = QextSerialEnumerator::getPorts();
     QStringList stringlist;
     QString name;
-    int index = -1;
     stringlist << "List of ports:";
+#ifdef AUTOPORT
+    int index = -1;
     progress->setValue(0);
     progress->setVisible(true);
+#endif
     for (int i = 0; i < ports.size(); i++) {
         progress->setValue(i*100/ports.size());
         stringlist << "port name:" << ports.at(i).portName;
@@ -1071,6 +1131,7 @@ void MainWindow::enumeratePorts()
         name = "/"+ports.at(i).physName;
         cbPort->addItem(name);
 #endif
+#ifdef AUTOPORT
         index++;
         /* test for valid port */
         if(name.length() && !portListener->port->isOpen()) {
@@ -1088,9 +1149,11 @@ void MainWindow::enumeratePorts()
                 index--;
             }
         }
+#endif
     }
+#ifdef AUTOPORT
     progress->setValue(100);
-    //progress->setVisible(false);
+#endif
 }
 
 void MainWindow::connectButton()

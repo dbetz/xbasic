@@ -58,6 +58,10 @@
 #include "console.h"
 #include "hardware.h"
 
+#if defined(Q_WS_WIN32)
+#include "WindowsEvent.h"
+#endif
+
 #define untitledstr "Untitled"
 
 QT_BEGIN_NAMESPACE
@@ -71,6 +75,9 @@ class MainWindow : public QMainWindow
 
 public:
     MainWindow(QWidget *parent = 0);
+
+signals:
+    void doPortEnumerate();
 
 public slots:
     void terminalEditorTextChanged();
@@ -126,6 +133,7 @@ private:
     void updateReferenceTree(QString fileName, QString text);
     void setEditorTab(int num, QString shortName, QString fileName, QString text);
     QString shortFileName(QString fileName);
+    void checkConfigSerialPort();
 
     QSettings   *settings;
     QString     xBasicCompiler;
@@ -182,6 +190,14 @@ private:
     QLabel *msgLabel ;
     QProgressBar *progress;
     QString compileResult;
+
+#if defined(Q_WS_WIN32)
+    WindowsEvent *winev;
+#endif
+
+protected:
+    bool winEvent(MSG *msg,long * result);
+
 };
 //! [0]
 
