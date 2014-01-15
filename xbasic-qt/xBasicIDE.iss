@@ -3,7 +3,7 @@
 
 #define MyAppName "xBasic IDE"
 #define MyDocName "xBasic"
-#define MyAppVersion "0.19"
+#define MyAppVersion "0.21"
 #define MyAppPublisher "MicroCSource"
 #define MyAppURL "www.MicroCSource.com"
 #define MyAppExeName "bin\xbasic-qt.exe"
@@ -28,7 +28,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\xbasic-qt-build-desktop
-OutputBaseFilename=xBasicIDE_0_19_setup
+OutputBaseFilename=xBasicIDE_0_21_setup
 Compression=lzma/Max
 SolidCompression=true
 AlwaysShowDirOnReadyPage=true
@@ -51,8 +51,8 @@ Source: "LGPL_2_1.txt"; DestDir: "{app}"; Flags: ignoreversion
 ;Source: "..\LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
 ;Source: "..\doc\xBasicIDEUserGuide.doc"; DestDir: "{app}"; Flags: ignoreversion
 
-;Source: "{#MyQtPath}\mingw\bin\libgcc_s_dw2-1.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
-;Source: "{#MyQtPath}\mingw\bin\mingwm10.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#MyQtPath}\mingw\bin\libgcc_s_dw2-1.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
+Source: "{#MyQtPath}\mingw\bin\mingwm10.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#MyQtPath}\qt\bin\QtCored4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "{#MyQtPath}\qt\bin\QtGuid4.dll"; DestDir: "{app}\bin"; Flags: ignoreversion
 Source: "..\include\*"; DestDir: "{code:GetDataDir}\include"; Flags: ignoreversion recursesubdirs createallsubdirs

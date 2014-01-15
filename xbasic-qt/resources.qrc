@@ -21,5 +21,6 @@
         <file>images/exit.png</file>
         <file>images/project.png</file>
         <file>images/treeproject.png</file>
+        <file>images/build2.png</file>
     </qresource>
 </RCC>

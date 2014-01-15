@@ -34,8 +34,8 @@ TEMPLATE = app
 
 DEFINES += QEXTSERIALPORT_LIB
 DEFINES += IDEVERSION="0"
-DEFINES += MINVERSION=1
-DEFINES += FIXVERSION=8
+DEFINES += MINVERSION=2
+DEFINES += FIXVERSION=1
 
 INCLUDEPATH += \
     ../src/common \
@@ -56,7 +56,9 @@ SOURCES += main.cpp\
     console.cpp \
     hardware.cpp \
     progressdialog.cpp \
-    progressform.cpp
+    progressform.cpp \
+    qextserialenumerator.cpp \
+    PropellerID.cpp
 
 HEADERS  += mainwindow.h \
     highlighter.h \
@@ -64,7 +66,6 @@ HEADERS  += mainwindow.h \
     treeitem.h \
     qextserialport.h \
     qextserialenumerator.h \
-    qextserialport_global.h \
     PortListener.h \
     terminal.h \
     properties.h \
@@ -73,21 +74,23 @@ HEADERS  += mainwindow.h \
     console.h \
     hardware.h \
     progressdialog.h \
-    progressform.h
+    progressform.h \
+    PropellerID.h
 
 OTHER_FILES +=
 
 RESOURCES += \
     resources.qrc
 
-unix:SOURCES       += posix_qextserialport.cpp
+unix:SOURCES       += qextserialport_unix.cpp
 unix:!macx:SOURCES += qextserialenumerator_unix.cpp
 macx {
   SOURCES          += qextserialenumerator_osx.cpp
   LIBS             += -framework IOKit -framework CoreFoundation
 }
 win32 {
-  SOURCES          += win_qextserialport.cpp qextserialenumerator_win.cpp
+  SOURCES          += qextserialport_win.cpp
+  SOURCES          += qextserialenumerator_win.cpp
   DEFINES          += WINVER=0x0501 # needed for mingw to pull in appropriate dbt business...probably a better way to do this
   LIBS             += -lsetupapi
 }

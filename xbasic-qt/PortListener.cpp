@@ -13,6 +13,7 @@ void PortListener::init(const QString & portName, BaudRateType baud)
          // don't reinitialize port
         if(port->portName() == portName)
             return;
+        disconnect(port, SIGNAL(readyRead()), this, SLOT(onReadyRead())); // never disconnect
         delete port;
     }
     this->port = new QextSerialPort(portName, QextSerialPort::EventDriven);
@@ -21,7 +22,7 @@ void PortListener::init(const QString & portName, BaudRateType baud)
     port->setParity(PAR_NONE);
     port->setDataBits(DATA_8);
     port->setStopBits(STOP_1);
-    connect(port, SIGNAL(readyRead()), this, SLOT(onReadyRead())); // never disconnect
+    connect(port, SIGNAL(readyRead()), this, SLOT(onReadyRead()));
 }
 
 void PortListener::setDtr(bool enable)
@@ -29,15 +30,15 @@ void PortListener::setDtr(bool enable)
     this->port->setDtr(enable);
 }
 
-void PortListener::open()
+bool PortListener::open()
 {
     if(!textEditor) // no text editor, no open
-        return;
+        return false;
 
     if(port == NULL)
-        return;
+        return false;
 
-    port->open(QIODevice::ReadWrite);
+    return port->open(QIODevice::ReadWrite);
 }
 
 void PortListener::close()
@@ -56,7 +57,7 @@ void PortListener::setTerminalWindow(QPlainTextEdit *editor)
 
 void PortListener::send(QByteArray &data)
 {
-    port->writeData(data.constData(),1);
+    port->write(data.constData(),1);
 }
 
 void PortListener::onReadyRead()
@@ -75,8 +76,9 @@ void PortListener::onReadyRead()
         if(sbuff.indexOf('\b') < 0) // if no backspace, just append buffer
         {
             textEditor->setPlainText(textEditor->toPlainText() + buff);
+            textEditor->moveCursor(QTextCursor::End);
         }
-        else                        // if backspaces, do it the slow way.
+        else // if backspaces, do it the slow way.
         {
             for(int n = 0; n < ret; n++)
             {
@@ -87,8 +89,9 @@ void PortListener::onReadyRead()
                 else
                     textEditor->setPlainText(text + buff[n]);
             }
+            textEditor->moveCursor(QTextCursor::End);
         }
-        textEditor->moveCursor(QTextCursor::End);
+        textEditor->repaint(); // yay!
     }
 }
 

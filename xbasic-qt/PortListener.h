@@ -15,13 +15,14 @@ public:
     PortListener();
     void init(const QString & portName, BaudRateType baud);
     void setDtr(bool enable);
-    void open();
+    bool open();
     void close();
     void setTerminalWindow(QPlainTextEdit *editor);
     void send(QByteArray &data);
 
-private:
     QextSerialPort  *port;
+
+private:
     QPlainTextEdit  *textEditor;
 
 private slots:

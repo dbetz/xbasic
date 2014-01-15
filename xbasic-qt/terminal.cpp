@@ -35,6 +35,10 @@ void Terminal::setPosition(int x, int y)
 
 void Terminal::accept()
 {
+/*
+    QString text = termEditor->toPlainText();
+    QStringList list = text.split("\n");
+*/
     done(QDialog::Accepted);
 }
 
