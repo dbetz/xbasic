@@ -113,49 +113,87 @@ int sendlong(uint32_t data)
  * @param hSerial - file handle to serial port
  * @returns zero on failure
  */
-int hwfind(void)
+static int hwfind(int retry)
 {
     int  n, ii, jj, rc, to;
     uint8_t mybuf[300];
 
-    msleep(50); // pause after reset - 100ms is too long
+    /* hwfind is recursive if we get a failure on th first try.
+     * retry is set by caller and should never be more than one.
+     */
+    if(retry < 0)
+        return 0;
+
+    /* Do not pause after reset.
+     * Propeller can give up if it does not see a response in 100ms of reset.
+     */
     mybuf[0] = 0xF9;
     LFSR = 'P';  // P is for Propeller :)
 
-    // set magic propeller byte stream
-    for(n = 1; n < 251; n++)
-        mybuf[n] = iterate() | 0xfe;
-    tx(mybuf, 251);
+    /* send the calibration pulse
+     */
+    if(tx(mybuf, 1) == 0)
+        return 0;   // tx should never return 0, return error if it does.
 
-    // send gobs of 0xF9 for id sync-up - these clock out the LSFR bits and the id
+    /* Send the magic propeller LFSR byte stream.
+     */
+    for(n = 0; n < 250; n++)
+        mybuf[n] = iterate() | 0xfe;
+    if(tx(mybuf, 250) == 0)
+        return 0;   // tx should never return 0, return error if it does.
+
+    n = 0;
+    while((jj = rx_timeout(mybuf,10,50)) > -1)
+        n += jj;
+    if(n != 0)
+        printf("Ignored %d bytes. \n", n);
+
+    /* Send 258 0xF9 for LFSR and Version ID
+     * These bytes clock the LSFR bits and ID from propeller back to us.
+     */
     for(n = 0; n < 258; n++)
         mybuf[n] = 0xF9;
-    tx(mybuf, 258);
+    if(tx(mybuf, 258) == 0)
+        return 0;   // tx should never return 0, return error if it does.
 
-    //for(n = 0; n < 250; n++) printf("%d", iterate() & 1);
-    //printf("\n\n");
+    /*
+     * Wait at least 100ms for the first response. Allow some margin.
+     * Some chips may respond < 50ms, but there's no guarantee all will.
+     * If we don't get it, we can assume the propeller is not there.
+     */
+    ii = getBit(&rc, 110);
+    if(rc == 0) {
+        //printf("Timeout waiting for first response bit. Propeller not found\n");
+        return 0;
+    }
 
-    msleep(100);
-    
     // wait for response so we know we have a Propeller
-    for(n = 0; n < 250; n++) {
+    for(n = 1; n < 250; n++) {
+
+        jj = iterate();
+        //printf("%d:%d ", ii, jj);
+        //fflush(stdout);
+
+        if(ii != jj) {
+            /* if we get this far, we probably have a propeller chip
+             * but the serial port is in a funny state. just retry.
+             */
+            //printf("Lost HW contact. %d %x ... retry.\n", n, *mybuf & 0xff);
+            for(n = 0; (n < 300) && (rx_timeout(mybuf,1,10) > -1); n++);
+            hwreset();
+            return hwfind(--retry);
+        }
         to = 0;
         do {
             ii = getBit(&rc, 100);
         } while(rc == 0 && to++ < 100);
         //printf("%d", rc);
         if(to > 100) {
-            printf("Timeout waiting for response bit. Propeller Not Found!\n");
-            return 0;
-        }
-        jj = iterate();
-        //printf("%d:%d ", ii, jj);
-        if(ii != jj) {
-            printf("Lost HW contact. %d %x\n", n, *mybuf & 0xff);
+            //printf("Timeout waiting for response bit. Propeller Not Found!\n");
             return 0;
         }
     }
-    
+
     //printf("Propeller Version ... ");
     rc = 0;
     for(n = 0; n < 8; n++) {
@@ -177,7 +215,7 @@ int findprop(char* port)
 {
     int version = 0;
     hwreset();
-    version = hwfind();
+    version = hwfind(1);
     if(version) {
         printf("Propeller Version %d on %s\n", version, port);
     }
