@@ -156,9 +156,9 @@ int rx_timeout(uint8_t* buff, int n, int timeout)
 void hwreset(void)
 {
     EscapeCommFunction(hSerial, SETDTR);
-    Sleep(100);
+    Sleep(25);
     EscapeCommFunction(hSerial, CLRDTR);
-    Sleep(50);
+    Sleep(90);
     /* Purge here after reset to get rid of buffered data. Prevents "Lost HW Contact 0 f9" */
     PurgeComm(hSerial, PURGE_TXABORT | PURGE_RXABORT | PURGE_TXCLEAR | PURGE_RXCLEAR);
 }
