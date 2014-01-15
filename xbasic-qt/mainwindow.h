@@ -100,6 +100,7 @@ public slots:
     void programDebug();
     void compilerError(QProcess::ProcessError error);
     void compilerFinished(int exitCode, QProcess::ExitStatus status);
+    void procReadyRead();
     void closeEvent(QCloseEvent *event);
 
     void fileChanged();
@@ -154,6 +155,7 @@ private:
 
     QString     basicPath;
     QString     includePath;
+    QString     lastDirectory;
 
     QComboBox   *cbBoard;
     QComboBox   *cbPort;
@@ -173,7 +175,13 @@ private:
     QProcess    *proc;
 
     Hardware    *hardwareDialog;
+
+    int progMax;
+    int progCount;
+    QLabel *sizeLabel;
+    QLabel *msgLabel ;
     QProgressBar *progress;
+    QString compileResult;
 };
 //! [0]
 

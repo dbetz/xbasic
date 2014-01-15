@@ -2,6 +2,7 @@
 
 #include "mainwindow.h"
 #include "qextserialenumerator.h"
+#include "PropellerID.h"
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
@@ -43,14 +44,24 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     newFile();
 
     /* status bar for progressbar */
-    QStatusBar *statusBar = new QStatusBar(this);
-    this->setStatusBar(statusBar);
-    progress = new QProgressBar();
-    progress->setMaximumSize(200,25);
-    progress->setValue(0);
+    QStatusBar *statusBar = new QStatusBar();
 
-    statusBar->addWidget(progress);
-    statusBar->setLayoutDirection(Qt::RightToLeft);
+    sizeLabel = new QLabel;
+    msgLabel  = new QLabel;
+
+    progress = new QProgressBar();
+    //progress->setMaximumSize(100,25);
+    progress->setValue(0);
+    progress->setMinimum(0);
+    progress->setMaximum(100);
+    progress->setTextVisible(false);
+    progress->setVisible(false);
+
+    statusBar->addPermanentWidget(msgLabel,70);
+    statusBar->addPermanentWidget(sizeLabel,15);
+    statusBar->addPermanentWidget(progress,15);
+
+    this->setStatusBar(statusBar);
 
 
     /* get app settings at startup and before any compiler call */
@@ -62,7 +73,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     portListener = new PortListener();
 
     /* get available ports at startup */
-    enumeratePorts();
+    //enumeratePorts();
 
     /* these are read once per app startup */
     QVariant lastportv  = settings->value(lastPortNameKey);
@@ -94,11 +105,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     /* load the last file into the editor to make user happy */
     QVariant lastfilev = settings->value(lastFileNameKey);
+    QString fileName;
     if(!lastfilev.isNull()) {
         if(lastfilev.canConvert(QVariant::String)) {
-            QString fileName = lastfilev.toString();
+            fileName = lastfilev.toString();
             openFileName(fileName);
             setProject(); // last file is always first project
+        }
+    }
+
+    /* load the last directory to make user happy */
+    lastDirectory = fileName.mid(0,fileName.lastIndexOf("/")+1);
+    QVariant lastdirv = settings->value(lastDirectoryKey, lastDirectory);
+    if(!lastdirv.isNull()) {
+        if(lastdirv.canConvert(QVariant::String)) {
+            lastDirectory = lastdirv.toString();
         }
     }
 
@@ -243,6 +264,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     settings->setValue(lastFileNameKey,filestr);
     settings->setValue(lastBoardNameKey,boardstr);
     settings->setValue(lastPortNameKey,portstr);
+    settings->setValue(lastDirectoryKey, lastDirectory);
+    QApplication::quit();
 }
 
 void MainWindow::newFile()
@@ -261,8 +284,9 @@ void MainWindow::openFile(const QString &path)
 
     if (fileName.isNull())
         fileName = QFileDialog::getOpenFileName(this,
-            tr("Open File"), "", "xBasic Files (*.bas)");
+            tr("Open File"), lastDirectory, "xBasic Files (*.bas)");
     openFileName(fileName);
+    lastDirectory = fileName.mid(0,fileName.lastIndexOf("/")+1);
     setProject();
     /*
     if(projectFile.length() == 0) {
@@ -289,6 +313,7 @@ void MainWindow::openFileName(QString fileName)
                     if(editorTabs->tabText(n) == sname) {
                         setEditorTab(n, sname, fileName, data);
                         file.close();
+                        setProject();
                         return;
                     }
                 }
@@ -296,6 +321,7 @@ void MainWindow::openFileName(QString fileName)
             if(editorTabs->tabText(0) == untitledstr) {
                 setEditorTab(0, sname, fileName, data);
                 file.close();
+                setProject();
                 return;
             }
             newFile();
@@ -320,6 +346,7 @@ void MainWindow::saveFile(const QString &path)
             if (file.open(QFile::WriteOnly | QFile::Text)) {
                 file.write(data.toAscii());
                 file.close();
+                setProject();
             }
         }
     } catch(...) {
@@ -353,10 +380,11 @@ void MainWindow::saveAsFile(const QString &path)
 
         if (fileName.isEmpty())
             fileName = QFileDialog::getSaveFileName(this,
-                tr("Save As File"), "", "xBasic Files (*.bas)");
+                tr("Save As File"), lastDirectory, "xBasic Files (*.bas)");
 
         if (fileName.isEmpty())
             return;
+        lastDirectory = fileName.mid(0,fileName.lastIndexOf("/")+1);
 
         this->editorTabs->setTabText(n,shortFileName(fileName));
         editorTabs->setTabToolTip(n,fileName);
@@ -367,6 +395,7 @@ void MainWindow::saveAsFile(const QString &path)
                 file.write(data.toAscii());
                 file.close();
             }
+            setProject();
         }
     } catch(...) {
     }
@@ -427,7 +456,9 @@ void MainWindow::setProject()
     QString fileName = editorTabs->tabToolTip(index);
     QString text = editors->at(index)->toPlainText();
 
-    if(fileName.length() != 0 && text.length() != 0)
+    setWindowTitle(tr("xBasic IDE")+" "+fileName);
+
+    if(fileName.length() != 0)
     {
         updateProjectTree(fileName,text);
         updateReferenceTree(fileName,text);
@@ -561,71 +592,83 @@ int  MainWindow::runCompiler(QString copts)
         return -1;
     }
 
+    setCurrentPort(cbPort->currentIndex());
+
+    QString result;
+    int exitCode = 0;
+    int exitStatus = 0;
+    QStringList rlist;
+
+    int index = editorTabs->currentIndex();
+    QString fileName = editorTabs->tabToolTip(index);
+    QString text = editors->at(index)->toPlainText();
+
+    updateProjectTree(fileName,text);
+    updateReferenceTree(fileName,text);
+
+    sizeLabel->setText("");
+    msgLabel->setText("");
+
+    progress->setValue(0);
+    progress->setVisible(true);
+
     getApplicationSettings();
     if(checkCompilerInfo()) {
         return -1;
     }
-
-    progress->setValue(0);
 
     QStringList args = getCompilerParameters(copts);
 
     btnConnected->setChecked(false);
     connectButton();            // disconnect uart before use
 
-    progress->setValue(5);
-
     checkAndSaveFiles();
-    progress->setValue(10);
 
     QMessageBox mbox;
     mbox.setStandardButtons(QMessageBox::Ok);
 
     QProcess proc(this);
+    this->proc = &proc;
+
+    connect(this->proc, SIGNAL(readyReadStandardOutput()),this,SLOT(procReadyRead()));
+    proc.setProcessChannelMode(QProcess::MergedChannels);
 
     proc.setWorkingDirectory(xBasicCompilerPath);
 
     proc.start(xBasicCompiler,args);
 
-    progress->setValue(15);
-
     if(!proc.waitForStarted()) {
-        progress->setValue(100);
         mbox.setInformativeText(tr("Could not start compiler."));
         mbox.exec();
-        return -1;
+        goto error;
     }
 
-    progress->setValue(50);
+    progress->setValue(10);
 
     if(!proc.waitForFinished()) {
-        progress->setValue(100);
         mbox.setInformativeText(tr("Error waiting for compiler to finish."));
         mbox.exec();
-        return -1;
+        goto error;
     }
 
-    progress->setValue(60);
+    progress->setValue(20);
 
-    QString result = proc.readAll();
-    result += proc.readAllStandardOutput();
-    result += proc.readAllStandardError();
-    int exitCode = proc.exitCode();
-    int exitStatus = proc.exitStatus();
+    exitCode = proc.exitCode();
+    exitStatus = proc.exitStatus();
 
-    mbox.setInformativeText(result);
+    mbox.setInformativeText(compileResult);
+    msgLabel->setText("");
 
     if(exitStatus == QProcess::CrashExit)
     {
-        progress->setValue(100);
         mbox.setText(tr("xBasic Compiler Crashed"));
         mbox.exec();
-        return -1;
+        goto error;
     }
+    progress->setValue(30);
     if(exitCode != 0)
     {
-        progress->setValue(100);
-        if(result.toLower().indexOf("helper") > 0) {
+        if(compileResult.toLower().indexOf("helper") > 0) {
             mbox.setInformativeText(result +
                  "\nDid you set the right board type?" +
                  "\nHUB and C3 set 80MHz clock." +
@@ -633,18 +676,33 @@ int  MainWindow::runCompiler(QString copts)
         }
         mbox.setText(tr("xBasic Compile Error"));
         mbox.exec();
-        return -1;
+        goto error;
     }
-    if(result.indexOf("error") > -1)
+    progress->setValue(40);
+    if(compileResult.indexOf("error") > -1)
     { // just in case we get an error without exitCode
-        progress->setValue(100);
         mbox.setText(tr("xBasic Compile Error"));
         mbox.exec();
-        return -1;
+        goto error;
     }
 
+    msgLabel->setText("Build Complete");
     progress->setValue(100);
+    progress->setVisible(false);
+    disconnect(this->proc, SIGNAL(readyReadStandardOutput()),this,SLOT(procReadyRead()));
     return 0;
+
+    error:
+
+    sizeLabel->setText("Error");
+
+    exitCode = proc.exitCode();
+    exitStatus = proc.exitStatus();
+
+    progress->setValue(100);
+    progress->setVisible(false);
+    disconnect(this->proc, SIGNAL(readyReadStandardOutput()),this,SLOT(procReadyRead()));
+    return -1;
 }
 
 void MainWindow::compilerError(QProcess::ProcessError error)
@@ -657,6 +715,110 @@ void MainWindow::compilerFinished(int exitCode, QProcess::ExitStatus status)
     qDebug() << exitCode << status;
 }
 
+void MainWindow::procReadyRead()
+{
+    QByteArray bytes = this->proc->readAllStandardOutput();
+    if(bytes.length() == 0)
+        return;
+
+#if defined(Q_WS_WIN32)
+    QString eol("\r");
+#else
+    QString eol("\n");
+#endif
+    bytes = bytes.replace("\r\n","\n");
+
+    compileResult = QString(bytes);
+    QStringList lines = QString(bytes).split("\n",QString::SkipEmptyParts);
+    if(bytes.contains("bytes")) {
+        for (int n = 0; n < lines.length(); n++) {
+            QString line = lines[n];
+            if(line.length() > 0) {
+                if(line.indexOf("\r") > -1) {
+                    QStringList more = line.split("\r",QString::SkipEmptyParts);
+                    lines.removeAt(n);
+                    for(int m = more.length()-1; m > -1; m--) {
+                        QString ms = more.at(m);
+                        if(ms.contains("bytes",Qt::CaseInsensitive))
+                            lines.insert(n,more.at(m));
+                        if(ms.contains("loading",Qt::CaseInsensitive))
+                            lines.insert(n,more.at(m));
+                    }
+                }
+            }
+        }
+    }
+    bool iserror = compileResult.contains("error:",Qt::CaseInsensitive);
+    for (int n = 0; n < lines.length(); n++) {
+        QString line = lines[n];
+        if(line.length() > 0) {
+            /*
+            if(iserror && line.contains(" line ", Qt::CaseInsensitive)) {
+                QStringList sl = line.split(" ", QString::SkipEmptyParts);
+                if(sl.count() > 1) {
+                    int num = QString(sl[sl.count()-1]).toInt();
+                    QPlainTextEdit *ed = editors->at(editorTabs->currentIndex());
+                    QTextCursor cur = ed->textCursor();
+                    cur.movePosition(QTextCursor::Start, QTextCursor::MoveAnchor);
+                    cur.movePosition(QTextCursor::Down, QTextCursor::MoveAnchor, num);
+                    cur.movePosition(QTextCursor::StartOfLine, QTextCursor::MoveAnchor);
+                    cur.movePosition(QTextCursor::EndOfLine, QTextCursor::KeepAnchor);
+                    QApplication::processEvents();
+                }
+            }
+            */
+            if(line.contains("Writing")) {
+                QStringList sl = line.split(" ");
+                sizeLabel->setText(sl[1]+tr(" Total Bytes"));
+            }
+            if(line.contains("Propeller Version",Qt::CaseInsensitive)) {
+                msgLabel->setText(line+eol);
+                progress->setValue(0);
+            }
+            else
+            if(line.contains("loading",Qt::CaseInsensitive)) {
+                progMax = 0;
+                progress->setValue(0);
+                msgLabel->setText(line+eol);
+            }
+            else
+            if(line.contains("writing",Qt::CaseInsensitive)) {
+                progMax = 0;
+                progress->setValue(0);
+            }
+            else
+            if(line.contains("Download OK",Qt::CaseInsensitive)) {
+                progress->setValue(100);
+                msgLabel->setText(line+eol);
+            }
+            else
+            if(line.contains("sent",Qt::CaseInsensitive)) {
+                msgLabel->setText(line+eol);
+            }
+            else
+            if(line.contains("remaining",Qt::CaseInsensitive)) {
+                if(progMax == 0) {
+                    QString bs = line.mid(0,line.indexOf(" "));
+                    progMax = bs.toInt();
+                    progMax /= 1024;
+                    progMax++;
+                    progCount = 0;
+                    if(progMax == 0) {
+                        progress->setValue(100);
+                    }
+                }
+                if(progMax != 0) {
+                    progCount++;
+                    progress->setValue(100*progCount/progMax);
+                }
+                msgLabel->setText(line);
+            }
+        }
+    }
+
+}
+
+
 void MainWindow::programBuild()
 {
     // must have something in the compiler options parameter
@@ -665,22 +827,30 @@ void MainWindow::programBuild()
 
 void MainWindow::programBurnEE()
 {
+    if(!cbPort->count())
+        enumeratePorts();
     runCompiler("-e");
 }
 
 void MainWindow::programRun()
 {
+    if(!cbPort->count())
+        enumeratePorts();
     runCompiler("-r");
 }
 
 void MainWindow::programDebug()
 {
+    if(!cbPort->count())
+        enumeratePorts();
     if(runCompiler("-r"))
         return; // don't start terminal if compile failed
+
     /*
      * setting the position of a new dialog doesn't work very nice
      * Term dialog will not close/reopen on debug so it doesn't matter.
      */
+    term->getEditor()->clear();
     term->show();   // show if hidden
 
     btnConnected->setChecked(true);
@@ -836,9 +1006,9 @@ void MainWindow::updateProjectTree(QString fileName, QString text)
 
     if(projectModel != NULL) delete projectModel;
     projectModel = new TreeModel(s, this);
-    projectModel->xBasicIncludes(fileName, this->xBasicIncludes, this->xBasicSeparator, text, true);
-    // projectModel->xBasicIncludes(text);
-
+    if(text.length() > 0) {
+        projectModel->xBasicIncludes(fileName, this->xBasicIncludes, this->xBasicSeparator, text, true);
+    }
     projectTree->setWindowTitle(s);
     projectTree->setModel(projectModel);
     projectTree->show();
@@ -852,8 +1022,9 @@ void MainWindow::updateReferenceTree(QString fileName, QString text)
 
     if(referenceModel != NULL) delete referenceModel;
     referenceModel = new TreeModel(s, this);
-    referenceModel->addFileReferences(fileName, xBasicIncludes, xBasicSeparator, text, true);
-
+    if(text.length() > 0) {
+        referenceModel->addFileReferences(fileName, xBasicIncludes, xBasicSeparator, text, true);
+    }
     referenceTree->setWindowTitle(s);
     referenceTree->setModel(referenceModel);
     referenceTree->show();
@@ -876,8 +1047,12 @@ void MainWindow::enumeratePorts()
     QList<QextPortInfo> ports = QextSerialEnumerator::getPorts();
     QStringList stringlist;
     QString name;
+    int index = -1;
     stringlist << "List of ports:";
+    progress->setValue(0);
+    progress->setVisible(true);
     for (int i = 0; i < ports.size(); i++) {
+        progress->setValue(i*100/ports.size());
         stringlist << "port name:" << ports.at(i).portName;
         stringlist << "friendly name:" << ports.at(i).friendName;
         stringlist << "physical name:" << ports.at(i).physName;
@@ -896,7 +1071,26 @@ void MainWindow::enumeratePorts()
         name = "/"+ports.at(i).physName;
         cbPort->addItem(name);
 #endif
+        index++;
+        /* test for valid port */
+        if(name.length() && !portListener->port->isOpen()) {
+            portListener->init(name, BAUD115200);  // signals get hooked up internally
+            if(portListener->open()) {
+                portListener->close();
+                PropellerID propid;
+                if(!propid.isDevice(name)) {
+                    cbPort->removeItem(index);
+                    index--;
+                }
+            }
+            else {
+                cbPort->removeItem(index);
+                index--;
+            }
+        }
     }
+    progress->setValue(100);
+    //progress->setVisible(false);
 }
 
 void MainWindow::connectButton()
@@ -970,6 +1164,7 @@ void MainWindow::setupEditor()
 
     QPlainTextEdit *editor = new QPlainTextEdit;
     editor->setFont(font);
+    editor->setTabStopWidth(font.pointSize()*3);
     connect(editor,SIGNAL(textChanged()),this,SLOT(fileChanged()));
     highlighter = new Highlighter(editor->document());
     editors->append(editor);
@@ -1009,7 +1204,7 @@ void MainWindow::setupFileMenu()
     menuBar()->addMenu(debugMenu);
 
     debugMenu->addAction(QIcon(":/images/debug.png"), tr("Debug"), this, SLOT(programDebug()), Qt::Key_F8);
-    debugMenu->addAction(QIcon(":/images/build.png"), tr("Build"), this, SLOT(programBuild()), Qt::Key_F9);
+    debugMenu->addAction(QIcon(":/images/build2.png"), tr("Build"), this, SLOT(programBuild()), Qt::Key_F9);
     debugMenu->addAction(QIcon(":/images/run.png"), tr("Run"), this, SLOT(programRun()), Qt::Key_F10);
     debugMenu->addAction(QIcon(":/images/burnee.png"), tr("Burn"), this, SLOT(programBurnEE()), Qt::Key_F11);
 }
@@ -1111,7 +1306,7 @@ void MainWindow::setupToolBars()
     QToolButton *btnDebugBuild = new QToolButton(this);
     QToolButton *btnDebugBurnEEP = new QToolButton(this);
 
-    addToolButton(debugToolBar, btnDebugBuild, QString(":/images/build.png"));
+    addToolButton(debugToolBar, btnDebugBuild, QString(":/images/build2.png"));
     addToolButton(debugToolBar, btnDebugBurnEEP, QString(":/images/burnee.png"));
     addToolButton(debugToolBar, btnDebugRun, QString(":/images/run.png"));
     addToolButton(debugToolBar, btnDebugDebugTerm, QString(":/images/debug.png"));

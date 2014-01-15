@@ -13,6 +13,7 @@
 #define lastPortNameKey     "LastPortName"
 #define lastTermXposKey     "LastTermXposition"
 #define lastTermYposKey     "LastTermYposition"
+#define lastDirectoryKey    "LastDirectory"
 
 #include <QtGui>
 
