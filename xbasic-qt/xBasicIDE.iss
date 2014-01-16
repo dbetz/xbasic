@@ -3,7 +3,7 @@
 
 #define MyAppName "xBasic IDE"
 #define MyDocName "xBasic"
-#define MyAppVersion "0.21"
+#define MyAppVersion "0.2.2"
 #define MyAppPublisher "MicroCSource"
 #define MyAppURL "www.MicroCSource.com"
 #define MyAppExeName "bin\xbasic-qt.exe"
@@ -28,7 +28,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 OutputDir=..\xbasic-qt-build-desktop
-OutputBaseFilename=xBasicIDE_0_21_setup
+OutputBaseFilename=xBasicIDE_0_2_2_setup
 Compression=lzma/Max
 SolidCompression=true
 AlwaysShowDirOnReadyPage=true
