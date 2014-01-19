@@ -194,9 +194,9 @@ void hwreset(void)
 {
     int cmd = TIOCM_DTR;
     ioctl(hSerial, TIOCMBIS, &cmd); // assert DTR pin
-    msleep(200);
+    msleep(25);
     ioctl(hSerial, TIOCMBIC, &cmd); // deassert DTR pin
-    msleep(2);
+    msleep(90);
     tcflush(hSerial, TCIFLUSH);
 }
 
