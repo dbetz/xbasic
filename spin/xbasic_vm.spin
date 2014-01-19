@@ -63,36 +63,41 @@ _init
         jmp     #_init1
 
 ' registers for use by inline code
-t1            long    $0
-t2            long    $0
-t3            long    $0
-t4            long    $0
-tos           long    $0
-base          long    $0
-sp            long    $0
-fp            long    $0
-pc            long    $0
+t1          long    0
+t2          long    0
+t3          long    0
+t4          long    0
+tos         long    0
+base        long    0
+sp          long    0
+fp          long    0
+pc          long    0
 
 ' virtual machine registers
-stack         long    $0
-stackTop      long    $0
-stepping      long    $0
+stack       long    0
+stackTop    long    0
+stepping    long    0
+
+' temporaries used by the VM instructions
+r1          long    0
+r2          long    0
+r3          long    0
 
 _init1
         ' prepare to parse the initialization parameters
-        mov     t1,par
+        mov     r1,par
 
         ' get the memory base address (only for hub mode)
-        rdlong  base,t1
-        add     t1,#4
+        rdlong  base,r1
+        add     r1,#4
 
         ' get the state vector
-        rdlong  state_ptr,t1
-        add     t1,#4
+        rdlong  state_ptr,r1
+        add     r1,#4
 
         ' get the mailbox address
-        rdlong  cmd_ptr,t1
-        add     t1,#4
+        rdlong  cmd_ptr,r1
+        add     r1,#4
         mov     arg_sts_ptr,cmd_ptr
         add     arg_sts_ptr,#4
         mov     arg2_fcn_ptr,arg_sts_ptr
@@ -100,37 +105,37 @@ _init1
 
 #ifdef USE_JCACHE_MEMORY
         ' get the cache mailbox address
-        rdlong  cache_mboxcmd,t1
-        add     t1,#4
+        rdlong  cache_mboxcmd,r1
+        add     r1,#4
         mov     cache_mboxdat,cache_mboxcmd
         add     cache_mboxdat,#4
-        rdlong  cache_linemask,t1
+        rdlong  cache_linemask,r1
 #endif
 
         ' return the initial state
         call    #store_state
 
         ' start processing commands
-        mov     t1,#int#STS_Step
+        mov     r1,#int#STS_Step
 
 end_command
-        wrlong  t1,arg_sts_ptr
+        wrlong  r1,arg_sts_ptr
 
 done_command
         wrlong  zero,cmd_ptr
 
 get_command
-        rdlong  t1,cmd_ptr
-        tjz     t1,#get_command
+        rdlong  r1,cmd_ptr
+        tjz     r1,#get_command
 
 parse_command
-        cmp     t1,#int#_VM_Last wc,wz ' check for valid command
+        cmp     r1,#int#_VM_Last wc,wz ' check for valid command
   if_a  jmp     #err_command
-        add     t1,#cmd_table-1 
-        jmp     t1                  ' jump to command handler
+        add     r1,#cmd_table-1 
+        jmp     r1                  ' jump to command handler
 
 err_command
-        mov     t1,#int#STS_Fail
+        mov     r1,#int#STS_Fail
         jmp     #end_command
 
 cmd_table                           ' command dispatch table
@@ -140,55 +145,55 @@ cmd_table                           ' command dispatch table
         jmp     #_VM_ReadByte
 
 _VM_Continue
-        mov     t1,state_ptr
-        rdlong  fp,t1           ' load fp
-        add     t1,#4
-        rdlong  sp,t1           ' load sp
-        add     t1,#4
-        rdlong  tos,t1          ' load tos
-        add     t1,#4
-        rdlong  pc,t1           ' load pc
-        add     t1,#4
-        rdlong  stepping,t1     ' load stepping
-        add     t1,#4
-        rdlong  stack,t1        ' load stack
-        add     t1,#4
-        rdlong  stackTop,t1     ' load the stack size
+        mov     r1,state_ptr
+        rdlong  fp,r1           ' load fp
+        add     r1,#4
+        rdlong  sp,r1           ' load sp
+        add     r1,#4
+        rdlong  tos,r1          ' load tos
+        add     r1,#4
+        rdlong  pc,r1           ' load pc
+        add     r1,#4
+        rdlong  stepping,r1     ' load stepping
+        add     r1,#4
+        rdlong  stack,r1        ' load stack
+        add     r1,#4
+        rdlong  stackTop,r1     ' load the stack size
         add     stackTop,stack
         jmp     #_start
 
 _VM_ReadLong
-        rdlong  t1,arg_sts_ptr
+        rdlong  r1,arg_sts_ptr
         call    #_read_long
-        wrlong  t1,arg2_fcn_ptr
-        mov     t1,#int#STS_Success
+        wrlong  r1,arg2_fcn_ptr
+        mov     r1,#int#STS_Success
         jmp     #end_command
 
 _VM_WriteLong
-        rdlong  t1,arg_sts_ptr
-        rdlong  t2,arg2_fcn_ptr
+        rdlong  r1,arg_sts_ptr
+        rdlong  r2,arg2_fcn_ptr
         call    #_write_long
-        mov     t1,#int#STS_Success
+        mov     r1,#int#STS_Success
         jmp     #end_command
 
 _VM_ReadByte
-        rdlong  t1,arg_sts_ptr
+        rdlong  r1,arg_sts_ptr
         call    #_read_byte
-        wrlong  t1,arg2_fcn_ptr
-        mov     t1,#int#STS_Success
+        wrlong  r1,arg2_fcn_ptr
+        mov     r1,#int#STS_Success
         jmp     #end_command
 
 store_state
-        mov     t1,state_ptr
-        wrlong  fp,t1       ' store fp
-        add     t1,#4
-        wrlong  sp,t1       ' store sp
-        add     t1,#4
-        wrlong  tos,t1      ' store tos
-        add     t1,#4
-        wrlong  pc,t1       ' store pc
-        add     t1,#4
-        wrlong  stepping,t1 ' store stepping
+        mov     r1,state_ptr
+        wrlong  fp,r1       ' store fp
+        add     r1,#4
+        wrlong  sp,r1       ' store sp
+        add     r1,#4
+        wrlong  tos,r1      ' store tos
+        add     r1,#4
+        wrlong  pc,r1       ' store pc
+        add     r1,#4
+        wrlong  stepping,r1 ' store stepping
 store_state_ret
         ret
 
@@ -196,14 +201,14 @@ _next   tjz     stepping,#_start
 
 _step_end
         call    #store_state
-        mov     t1,#int#STS_Step
+        mov     r1,#int#STS_Step
         jmp     #end_command
 
 _start  call    #get_code_byte
-        cmp     t1,#OP_LAST wc,wz       ' check for valid opcode
+        cmp     r1,#OP_LAST wc,wz       ' check for valid opcode
   if_a  jmp     #illegal_opcode_err
-        add     t1,#opcode_table 
-        jmp     t1                      ' jump to command
+        add     r1,#opcode_table 
+        jmp     r1                      ' jump to command
         
 opcode_table                            ' opcode dispatch table
         jmp     #_OP_HALT               ' halt
@@ -253,7 +258,7 @@ opcode_table                            ' opcode dispatch table
 
 _OP_HALT               ' halt
         call    #store_state
-        mov     t1,#int#STS_Halt
+        mov     r1,#int#STS_Halt
 	jmp	#end_command
 
 _OP_BRT                ' branch on true
@@ -286,7 +291,7 @@ take_branch_sc
 
 _OP_BR                 ' branch unconditionally
         call    #imm32
-        adds    pc,t1
+        adds    pc,r1
         jmp     #_next
 
 _OP_NOT                ' logical negate top of stack
@@ -301,13 +306,13 @@ _OP_NEG                ' negate
         
 _OP_ADD                ' add two numeric expressions
         call    #pop_t1
-        adds    tos,t1
+        adds    tos,r1
         jmp     #_next
         
 _OP_SUB                ' subtract two numeric expressions
         call    #pop_t1
-        subs    t1,tos
-        mov     tos,t1
+        subs    r1,tos
+        mov     tos,r1
         jmp     #_next
         
 _OP_MUL                ' multiply two numeric expressions
@@ -334,69 +339,69 @@ _OP_BNOT               ' bitwise not of two numeric expressions
         
 _OP_BAND               ' bitwise and of two numeric expressions
         call    #pop_t1
-        and     tos,t1
+        and     tos,r1
         jmp     #_next
         
 _OP_BOR                ' bitwise or of two numeric expressions
         call    #pop_t1
-        or      tos,t1
+        or      tos,r1
         jmp     #_next
         
 _OP_BXOR               ' bitwise exclusive or
         call    #pop_t1
-        xor     tos,t1
+        xor     tos,r1
         jmp     #_next
         
 _OP_SHL                ' shift left
         call    #pop_t1
-        shl     t1,tos
-        mov     tos,t1
+        shl     r1,tos
+        mov     tos,r1
         jmp     #_next
         
 _OP_SHR                ' shift right
         call    #pop_t1
-        shr     t1,tos
-        mov     tos,t1
+        shr     r1,tos
+        mov     tos,r1
         jmp     #_next
         
 _OP_LT                 ' less than
         call    #pop_t1
-        cmps    t1,tos wz,wc
+        cmps    r1,tos wz,wc
    if_b mov     tos,#1
   if_ae mov     tos,#0
         jmp     #_next
         
 _OP_LE                 ' less than or equal to
         call    #pop_t1
-        cmps    t1,tos wz,wc
+        cmps    r1,tos wz,wc
   if_be mov     tos,#1
   if_a  mov     tos,#0
         jmp     #_next
         
 _OP_EQ                 ' equal to
         call    #pop_t1
-        cmps    t1,tos wz
+        cmps    r1,tos wz
    if_e mov     tos,#1
   if_ne mov     tos,#0
         jmp     #_next
         
 _OP_NE                 ' not equal to
         call    #pop_t1
-        cmps    t1,tos wz
+        cmps    r1,tos wz
   if_ne mov     tos,#1
    if_e mov     tos,#0
         jmp     #_next
         
 _OP_GE                 ' greater than or equal to
         call    #pop_t1
-        cmps    t1,tos wz,wc
+        cmps    r1,tos wz,wc
   if_ae mov     tos,#1
    if_b mov     tos,#0
         jmp     #_next
         
 _OP_GT                 ' greater than
         call    #pop_t1
-        cmps    t1,tos wz,wc
+        cmps    r1,tos wz,wc
    if_a mov     tos,#1
   if_be mov     tos,#0
         jmp     #_next
@@ -404,41 +409,41 @@ _OP_GT                 ' greater than
 _OP_LIT                ' load a literal
         call    #push_tos
         call    #imm32
-        mov     tos,t1
+        mov     tos,r1
         jmp     #_next
 
 _OP_SLIT               ' load a short literal (-128 to 127)
         call    #push_tos
         call    #get_code_byte
-        shl     t1,#24
-        sar     t1,#24
-        mov     tos,t1
+        shl     r1,#24
+        sar     r1,#24
+        mov     tos,r1
         jmp     #_next
 
 _OP_LOAD               ' load a long from memory
-        mov     t1,tos
+        mov     r1,tos
         call    #_read_long
-        mov     tos,t1
+        mov     tos,r1
         jmp     #_next
         
 _OP_LOADB              ' load a byte from memory
-        mov     t1,tos
+        mov     r1,tos
         call    #_read_byte
-        mov     tos,t1
+        mov     tos,r1
         jmp     #_next
 
 _OP_STORE              ' store a long into memory
         call    #pop_t1
-        mov     t2,t1
-        mov     t1,tos
+        mov     r2,r1
+        mov     r1,tos
         call    #_write_long
         call    #pop_tos
         jmp     #_next
         
 _OP_STOREB             ' store a byte into memory
         call    #pop_t1
-        mov     t2,t1
-        mov     t1,tos
+        mov     r2,r1
+        mov     r1,tos
         call    #_write_byte
         call    #pop_tos
         jmp     #_next
@@ -446,25 +451,25 @@ _OP_STOREB             ' store a byte into memory
 _OP_LREF               ' load a local variable relative to the frame pointer
         call    #push_tos
         call    #lref
-        rdlong  tos,t1
+        rdlong  tos,r1
         jmp     #_next
         
 _OP_LSET               ' set a local variable relative to the frame pointer
         call    #lref
-        wrlong  tos,t1
+        wrlong  tos,r1
         call    #pop_tos
         jmp     #_next
         
 _OP_INDEX               ' index into a vector
         call    #pop_t1
         shl     tos,#2
-        add     tos,t1
+        add     tos,r1
         jmp     #_next
         
 _OP_PUSHJ
-        mov     t1,tos
+        mov     r1,tos
         mov     tos,pc
-        mov     pc,t1
+        mov     pc,r1
         jmp     #_next
 
 _OP_POPJ
@@ -474,21 +479,21 @@ _OP_POPJ
 
 _OP_CLEAN
         call    #get_code_byte
-        shl     t1,#2
-        add     sp,t1
+        shl     r1,#2
+        add     sp,r1
         jmp     #_next
 
 _OP_FRAME
-        mov     t2,fp
+        mov     r2,fp
         mov     fp,sp
         call    #get_code_byte
-        shl     t1,#2
-        sub     sp,t1
+        shl     r1,#2
+        sub     sp,r1
         cmp     sp,stack wc,wz
    if_b jmp     #stack_overflow_err
-        mov     t1,fp
-        sub     t1,#4
-        wrlong  t2,t1       ' store the old fp
+        mov     r1,fp
+        sub     r1,#4
+        wrlong  r2,r1       ' store the old fp
         jmp     #_next
 
 _OP_RETURNZ
@@ -514,41 +519,43 @@ _OP_DUP                ' duplicate the top element of the stack
 
 _OP_TRAP
         call    #get_code_byte
-        wrlong  t1,arg2_fcn_ptr
+        wrlong  r1,arg2_fcn_ptr
         call    #store_state
-        mov     t1,#int#STS_Trap
+        mov     r1,#int#STS_Trap
         jmp     #end_command
 
 _OP_NATIVE
         call    #imm32
-        mov     :inst, t1
-        shr     carry, #1 nr,wc ' set carry
+        mov     :inst, r1
+        test    save_zc, #2 wz      ' restore the z flag
+        shr     save_zc, #1 wc, nr  ' restore the c flag
 :inst   nop
-        rcl     carry, #1 wc    ' get carry
+        muxnz   save_zc, #2         ' save the z flag
+        muxc    save_zc, #1         ' save the c flag
         jmp     #_next
 
-carry   long    $0
+save_zc long    0
 
 imm32
         call    #get_code_byte  ' bits 31:24
-        mov     t2,t1
-        shl     t2,#8
+        mov     r2,r1
+        shl     r2,#8
         call    #get_code_byte  ' bits 16:23
-        or      t2,t1
-        shl     t2,#8
+        or      r2,r1
+        shl     r2,#8
         call    #get_code_byte  ' bits 15:8
-        or      t2,t1
-        shl     t2,#8
+        or      r2,r1
+        shl     r2,#8
         call    #get_code_byte  ' bits 7:0
-        or      t1,t2
+        or      r1,r2
 imm32_ret
         ret
 
 lref
         call    #get_code_byte
-        shl     t1,#24
-        sar     t1,#22
-        add     t1,fp
+        shl     r1,#24
+        sar     r1,#22
+        add     r1,fp
 lref_ret
         ret
         
@@ -567,21 +574,21 @@ pop_tos_ret
         ret
 
 pop_t1
-        rdlong  t1,sp
+        rdlong  r1,sp
         add     sp,#4
 pop_t1_ret
         ret
 
 illegal_opcode_err
-        mov     t1,#int#STS_IllegalOpcode
+        mov     r1,#int#STS_IllegalOpcode
         jmp     #end_command
 
 stack_overflow_err
-        mov     t1,#int#STS_StackOver
+        mov     r1,#int#STS_StackOver
         jmp     #end_command
 
 divide_by_zero_err
-        mov     t1,#int#STS_DivideZero
+        mov     r1,#int#STS_DivideZero
         jmp     #end_command
 external_start   long int#EXTERNAL_BASE     'Start of external memory access window in VM memory space
 cog_start        long int#COG_BASE	        'Start of COG access window in VM memory space
@@ -589,115 +596,115 @@ cog_start        long int#COG_BASE	        'Start of COG access window in VM mem
 ' input:
 '    pc is address
 ' output:
-'    t1 is value
+'    r1 is value
 '    pc is incremented
-get_code_byte           mov     t1, pc
+get_code_byte           mov     r1, pc
                         add     pc, #1
                         ' fall through
 
 ' Input:
-'    t1 is address
+'    r1 is address
 ' output:
-'    t1 is value
-_read_byte              cmp     t1, external_start wc    'Check for normal memory access
+'    r1 is value
+_read_byte              cmp     r1, external_start wc    'Check for normal memory access
               if_nc     jmp     #read_external_byte
 
-read_hub_byte           add     t1, base
-                        rdbyte  t1, t1
+read_hub_byte           add     r1, base
+                        rdbyte  r1, r1
                         jmp     #_read_byte_ret
 
 read_external_byte
 #ifdef USE_JCACHE_MEMORY
                         call    #cache_read
-                        rdbyte  t1, memp
+                        rdbyte  r1, memp
 #endif
 get_code_byte_ret
 _read_byte_ret          ret
 
 ' input:
-'    t1 is address
+'    r1 is address
 ' output:
-'    t1 is value
-_read_long              cmp     t1, external_start wc   'Check for normal memory access
+'    r1 is value
+_read_long              cmp     r1, external_start wc   'Check for normal memory access
               if_nc     jmp     #read_external_long
 
-read_hub_long           cmp     t1, cog_start wc        'Check for COG memory access
+read_hub_long           cmp     r1, cog_start wc        'Check for COG memory access
               if_nc     jmp     #read_cog_long
 
-                        add     t1, base
-                        rdlong  t1, t1
+                        add     r1, base
+                        rdlong  r1, r1
                         jmp     #_read_long_ret
 
-read_cog_long           shr     t1, #2
-                        movs    :rcog, t1
+read_cog_long           shr     r1, #2
+                        movs    :rcog, r1
                         nop
-:rcog                   mov     t1, 0-0
+:rcog                   mov     r1, 0-0
                         jmp     #_read_long_ret
 
 read_external_long
 #ifdef USE_JCACHE_MEMORY
                         call    #cache_read
-                        rdlong  t1, memp
+                        rdlong  r1, memp
 #endif
 _read_long_ret          ret
 
 ' Input:
-'    t1 is address
-'    t2 is value
+'    r1 is address
+'    r2 is value
 ' trashes:
-'    t1
-_write_byte             cmp     t1, external_start wc    'Check for normal memory access
+'    r1
+_write_byte             cmp     r1, external_start wc    'Check for normal memory access
               if_nc     jmp     #write_external_byte
 
-write_hub_byte          add     t1, base
-                        wrbyte  t2, t1
+write_hub_byte          add     r1, base
+                        wrbyte  r2, r1
                         jmp     #_write_byte_ret
 
 write_external_byte
 #ifdef USE_JCACHE_MEMORY
                         call    #cache_write
-                        wrbyte  t2, memp
+                        wrbyte  r2, memp
 #endif
 _write_byte_ret         ret
 
 ' input:
-'    t1 is address
-'    t2 is value
+'    r1 is address
+'    r2 is value
 ' trashes:
-'    t1
-_write_long             cmp     t1, external_start wc   'Check for normal memory access
+'    r1
+_write_long             cmp     r1, external_start wc   'Check for normal memory access
               if_nc     jmp     #write_external_long
 
-write_hub_long          cmp     t1, cog_start wc        'Check for COG memory access
+write_hub_long          cmp     r1, cog_start wc        'Check for COG memory access
               if_nc     jmp     #write_cog_long
 
-                        add     t1, base
-                        wrlong  t2, t1
+                        add     r1, base
+                        wrlong  r2, r1
                         jmp     #_write_long_ret
 
-write_cog_long          shr     t1, #2
-                        movd    :wcog, t1
+write_cog_long          shr     r1, #2
+                        movd    :wcog, r1
                         nop
-:wcog                   mov     0-0, t2
+:wcog                   mov     0-0, r2
                         jmp     #_write_long_ret
 
 write_external_long
 #ifdef USE_JCACHE_MEMORY
                         call    #cache_write
-                        wrlong  t2, memp
+                        wrlong  r2, memp
 #endif
 _write_long_ret         ret
 
 ' constants
-zero                    long    $0
+zero                    long    0
 allOnes                 long    $ffff_ffff
 dstinc                  long    1<<9    ' increment for the destination field of an instruction
 
 ' vm mailbox variables
-cmd_ptr                 long    $0
-arg_sts_ptr             long    $0
-arg2_fcn_ptr            long    $0
-state_ptr               long    $0
+cmd_ptr                 long    0
+arg_sts_ptr             long    0
+arg2_fcn_ptr            long    0
+state_ptr               long    0
 
 #ifdef USE_JCACHE_MEMORY
 
@@ -709,26 +716,26 @@ memp                    long    0
 cacheaddr               long    0
 cacheptr                long    0
 
-cache_write             mov     memp, t1                    'save address for index
-                        andn    t1, #cache#CMD_MASK         'ensure a write is not a read
-                        or      t1, #cache#WRITE_CMD
+cache_write             mov     memp, r1                    'save address for index
+                        andn    r1, #cache#CMD_MASK         'ensure a write is not a read
+                        or      r1, #cache#WRITE_CMD
                         jmp     #cache_access
 
-cache_read              mov     temp, t1                    'ptr + cache_mboxdat = hub address of byte to load
+cache_read              mov     temp, r1                    'ptr + cache_mboxdat = hub address of byte to load
                         andn    temp, cache_linemask
                         cmp     cacheaddr,temp wz           'if cacheaddr == addr, just pull form cache
             if_ne       jmp     #:next                      'memp gets overwriteen on a miss
-                        mov     memp, t1                    'ptr + cache_mboxdat = hub address of byte to load
+                        mov     memp, r1                    'ptr + cache_mboxdat = hub address of byte to load
                         and     memp, cache_linemask
                         add     memp, cacheptr              'add ptr to memp to get data address
                         jmp     #cache_read_ret
 :next
-                        mov     memp, t1                    'save address for index
-                        or      t1, #cache#READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
+                        mov     memp, r1                    'save address for index
+                        or      r1, #cache#READ_CMD         'read must be 3 to avoid needing andn addr,#cache#CMD_MASK
 
 cache_access            ' if cacheaddr <> addr, load new cache line
-                        wrlong  t1, cache_mboxcmd
-                        mov     cacheaddr,t1                'Save new cache address. it's free time here
+                        wrlong  r1, cache_mboxcmd
+                        mov     cacheaddr,r1                'Save new cache address. it's free time here
                         andn    cacheaddr,cache_linemask    'Kill command bits in free time
 :waitres                rdlong  temp, cache_mboxcmd wz
             if_nz       jmp     #:waitres
@@ -741,52 +748,52 @@ cache_write_ret
 
 #endif
 
-fast_mul                ' tos * t1
+fast_mul                ' tos * r1
                         ' account for sign
                         abs     tos, tos        wc
-                        negc    t1, t1
-                        abs     t1, t1          wc
-                        ' make t3 the smaller of the 2 unsigned parameters
-                        mov     t3, tos
-                        max     t3, t1
-                        min     t1, tos
+                        negc    r1, r1
+                        abs     r1, r1          wc
+                        ' make r3 the smaller of the 2 unsigned parameters
+                        mov     r3, tos
+                        max     r3, r1
+                        min     r1, tos
                         ' correct the sign of the adder
-                        negc    t1, t1
+                        negc    r1, r1
                         ' my accumulator
                         mov     tos, #0
                         ' do the work
-:mul_loop               shr     t3, #1          wc,wz   ' get the low bit of t3
-        if_c            add     tos, t1                 ' if it was a 1, add adder to accumulator
-                        shl     t1, #1                  ' shift the adder left by 1 bit
+:mul_loop               shr     r3, #1          wc,wz   ' get the low bit of r3
+        if_c            add     tos, r1                 ' if it was a 1, add adder to accumulator
+                        shl     r1, #1                  ' shift the adder left by 1 bit
         if_nz           jmp     #:mul_loop              ' continue as long as there are no more 1's
                         jmp     #_next
 
 {{==    div_flags: xxxx_invert result_store remainder   ==}}
 {{==    NOTE: Caller must not allow tos == 0!!!!        ==}}
-div_flags               long    $0
+div_flags               long    0
 
-fast_div                ' tos = t1 / tos
+fast_div                ' tos = r1 / tos
                         ' handle the signs, and check for a 0 divisor
                         and     div_flags, #1   wz      ' keep only the 0 bit, and remember if it's a 0
-                        abs     t2, tos         wc
+                        abs     r2, tos         wc
              if_z_and_c or      div_flags, #2           ' data was negative, and we're looking for quotient, so set bit 1 hi
-                        abs     t1, t1          wc
+                        abs     r1, r1          wc
               if_c      xor     div_flags, #2           ' tos was negative, invert bit 1 (quotient or remainder)
                         ' align the divisor to the leftmost bit
-                        neg     t3, #1          wc      ' count how many times we shift (negative)
-:align_loop             rcl     t2, #1          wc      ' left shift the divisior, marking when we hit a 1
-              if_nc     djnz    t3, #:align_loop        ' the divisior MUST NOT BE 0
-                        rcr     t2, #1                  ' restore the 1 bit we just nuked
-                        neg     t3, t3                  ' how many times did we shift? (we started at -1 and counted down)
+                        neg     r3, #1          wc      ' count how many times we shift (negative)
+:align_loop             rcl     r2, #1          wc      ' left shift the divisior, marking when we hit a 1
+              if_nc     djnz    r3, #:align_loop        ' the divisior MUST NOT BE 0
+                        rcr     r2, #1                  ' restore the 1 bit we just nuked
+                        neg     r3, r3                  ' how many times did we shift? (we started at -1 and counted down)
                         ' perform the division
                         mov     tos, #0
-:div_loop               cmpsub  t1, t2          wc      ' does the divisor fit into the dividend?
+:div_loop               cmpsub  r1, r2          wc      ' does the divisor fit into the dividend?
                         rcl     tos, #1                 ' if it did, store a one while shifting left
-                        shr     t2, #1                  '
-                        djnz    t3, #:div_loop
+                        shr     r2, #1                  '
+                        djnz    r3, #:div_loop
                         ' correct the sign
                         shr     div_flags, #1   wc,wz
-              if_c      mov     tos, t1                 ' user wanted the remainder, not the quotient
+              if_c      mov     tos, r1                 ' user wanted the remainder, not the quotient
                         negnz   tos, tos                ' need to invert the result
                         jmp     #_next
 

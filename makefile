@@ -83,6 +83,7 @@ $(OBJDIR)/xb_api.o \
 $(OBJDIR)/db_compiler.o \
 $(OBJDIR)/db_expr.o \
 $(OBJDIR)/db_generate.o \
+$(OBJDIR)/db_pasm.o \
 $(OBJDIR)/db_scan.o \
 $(OBJDIR)/db_statement.o \
 $(OBJDIR)/db_symbols.o \

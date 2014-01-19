@@ -35,11 +35,11 @@ REM
 def Math_SAR(value, shift)
     asm
         LREF 0              // get value
-        NATIVE 0xA0bc0805   // MOV t4, tos
+        NATIVE MOV t4, tos
         drop
         LREF 1              // get shift
-        NATIVE 0x38bc0805   // SAR t4, tos
-        NATIVE 0xA0bc0a04   // MOV tos, t4
+        NATIVE SAR t4, tos
+        NATIVE MOV tos, t4
         returnx             // return tos value
     end asm
 end def
