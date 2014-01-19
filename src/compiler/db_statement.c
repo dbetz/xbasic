@@ -6,6 +6,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "db_compiler.h"
 #include "db_vmdebug.h"
 
@@ -1177,7 +1178,10 @@ static void ParseAsm(ParseContext *c)
 /* Assemble - assemble a single line */
 static void Assemble(ParseContext *c, char *name)
 {
+    int PasmAssemble1(char *line, uint32_t *pValue);
     FLASH_SPACE OTDEF *def;
+    uint32_t value;
+    char *p;
     
     /* lookup the opcode */
     for (def = OpcodeTable; def->name != NULL; ++def)
@@ -1192,6 +1196,20 @@ static void Assemble(ParseContext *c, char *name)
                 break;
             case FMT_WORD:
                 putcword(c, ParseIntegerConstant(c));
+                break;
+            case FMT_NATIVE:
+                for (p = c->linePtr; *p != '\0' && isspace(*p); ++p)
+                    ;
+                if (isdigit(*p))
+                    putcword(c, ParseIntegerConstant(c));
+                else {
+                    if (!PasmAssemble1(c->linePtr, &value))
+                        ParseError(c, "native assembly failed");
+                    putcword(c, (VMVALUE)value);
+                    for (p = c->linePtr; *p != '\0' && *p != '\n'; ++p)
+                        ;
+                    c->linePtr = p;
+                }
                 break;
             default:
                 ParseError(c, "instruction not currently supported");

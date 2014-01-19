@@ -9,7 +9,8 @@
 #define FMT_BYTE        1
 #define FMT_SBYTE       2
 #define FMT_WORD        3
-#define FMT_BR          4
+#define FMT_NATIVE      4
+#define FMT_BR          5
 
 typedef struct {
     int code;

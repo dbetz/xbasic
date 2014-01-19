@@ -52,7 +52,7 @@ FLASH_SPACE OTDEF OpcodeTable[] = {
 { OP_CLEAN,     "CLEAN",    FMT_BYTE    },
 { OP_DROP,      "DROP",     FMT_NONE    },
 { OP_DUP,       "DUP",      FMT_NONE    },
-{ OP_NATIVE,    "NATIVE",   FMT_WORD    },
+{ OP_NATIVE,    "NATIVE",   FMT_NATIVE  },
 { OP_TRAP,      "TRAP",     FMT_BYTE    },
 { OP_RETURN,    "RETURNX",  FMT_NONE    },  // RETURN is an xbasic keyword
 { 0,            NULL,       0           }
@@ -111,6 +111,7 @@ int DecodeInstruction(System *sys, VMUVALUE addr, const uint8_t *lc)
                 n += 1;
                 break;
             case FMT_WORD:
+            case FMT_NATIVE:
                 for (i = 0; i < sizeof(VMVALUE); ++i) {
                     bytes[i] = VMCODEBYTE(lc + i + 1);
                     xbInfo(sys, "%02x ", bytes[i]);
