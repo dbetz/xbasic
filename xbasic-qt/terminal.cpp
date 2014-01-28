@@ -15,15 +15,39 @@ Terminal::Terminal(QWidget *parent) : QDialog(parent)
     QHBoxLayout *butLayout = new QHBoxLayout();
     termLayout->addLayout(butLayout);
     butLayout->addWidget(cls);
+    butLayout->addWidget(&portLabel);
     butLayout->addWidget(buttonBox);
     setLayout(termLayout);
     this->setWindowFlags(Qt::Tool);
+    portListener = NULL;
     resize(700,500);
 }
 
 Console *Terminal::getEditor()
 {
     return termEditor;
+}
+
+void Terminal::setPortListener(PortListener *listener)
+{
+    portListener = listener;
+    if(listener->port) {
+        if(listener->port->portName().isEmpty() == false)
+            portLabel.setText(listener->port->portName());
+    }
+    else {
+        portLabel.setText("");
+    }
+}
+
+QString Terminal::getPortName()
+{
+    return portLabel.text();
+}
+
+void Terminal::setPortName(QString name)
+{
+    portLabel.setText(name);
 }
 
 void Terminal::setPosition(int x, int y)

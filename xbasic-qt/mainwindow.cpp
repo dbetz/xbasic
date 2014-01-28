@@ -4,9 +4,6 @@
 #include "qextserialenumerator.h"
 #include "PropellerID.h"
 
-#include <qt_windows.h>
-#include <dbt.h>
-
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 {
     /* setup application registry info */
@@ -78,8 +75,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     /* get available ports at startup */
     enumeratePorts();
 
+#if 0
+#if defined(Q_WS_WIN32)
     /* connect windows USB change detect signal to enumerator */
-    connect(this,SIGNAL(doPortEnumerate()),this, SLOT(enumeratePorts()));
+    connect(this,SIGNAL(doPortEnumerate()),this, SLOT(enumeratePortsEvent()));
+#endif
+#else
+    portConnectionMonitor = new PortConnectionMonitor();
+    connect(portConnectionMonitor, SIGNAL(portChanged()), this, SLOT(enumeratePortsEvent()));
+#endif
 
     /* these are read once per app startup */
     QVariant lastportv  = settings->value(lastPortNameKey);
@@ -108,6 +112,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     /* tell port listener to use terminal editor for i/o */
     termEditor = term->getEditor();
     portListener->setTerminalWindow(termEditor);
+    term->setPortListener(portListener);
 
     /* load the last file into the editor to make user happy */
     QVariant lastfilev = settings->value(lastFileNameKey);
@@ -133,6 +138,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(hardwareDialog,SIGNAL(accepted()),this,SLOT(initBoardTypes()));
 }
 
+#if defined(Q_WS_WIN32)
 bool MainWindow::winEvent(MSG *message, long *result)
 {
     if (message->message==WM_DEVICECHANGE)
@@ -149,6 +155,7 @@ bool MainWindow::winEvent(MSG *message, long *result)
     }
     return false;
 }
+#endif
 
 void MainWindow::keyHandler(QKeyEvent* event)
 {
@@ -279,6 +286,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
     portListener->close();
 
     exitSave(); // find
+
+    portConnectionMonitor->stop();
 
     QString filestr = editorTabs->tabToolTip(editorTabs->currentIndex());
     QString boardstr = cbBoard->itemText(cbBoard->currentIndex());
@@ -611,6 +620,15 @@ int  MainWindow::runCompiler(QString copts)
     if(projectModel == NULL || projectFile.isNull()) {
         QMessageBox mbox(QMessageBox::Critical, "Error No Project",
             "Please select a tab and press F4 to set main project file.", QMessageBox::Ok);
+        mbox.exec();
+        return -1;
+    }
+
+    // don't allow if no port available
+    if(copts.length() > 0 && cbPort->count() < 1) {
+        QMessageBox mbox(QMessageBox::Critical, tr("No Serial Port"),
+             tr("Serial port not available.")+" "+tr("Connect a USB Propeller board, turn it on, and try again."),
+             QMessageBox::Ok);
         mbox.exec();
         return -1;
     }
@@ -1099,6 +1117,32 @@ void MainWindow::checkConfigSerialPort()
     }
 }
 
+void MainWindow::enumeratePortsEvent()
+{
+    enumeratePorts();
+    int len = this->cbPort->count();
+
+    // need to check if the port we are using disappeared.
+    if(this->btnConnected->isChecked()) {
+        bool notFound = true;
+        QString plPortName = this->term->getPortName();
+        for(int n = this->cbPort->count()-1; n > -1; n--) {
+            QString name = cbPort->itemText(n);
+            if(!name.compare(plPortName)) {
+                notFound = false;
+            }
+        }
+        if(notFound) {
+            btnConnected->setChecked(false);
+            connectButton();
+        }
+    }
+    else if(len > 1) {
+        this->cbPort->showPopup();
+    }
+
+}
+
 void MainWindow::enumeratePorts()
 {
     if(cbPort != NULL) cbPort->clear();
@@ -1121,15 +1165,18 @@ void MainWindow::enumeratePorts()
         stringlist << "product ID:" << QString::number(ports.at(i).productID, 16);
         stringlist << "===================================";
 #if defined(Q_WS_WIN32)
-        name = ports.at(i).portName;
-        cbPort->addItem(name);
+        if(name.contains(QString("LPT"),Qt::CaseInsensitive) == false) {
+            name = ports.at(i).portName;
+            cbPort->addItem(name);
+        }
 #elif defined(Q_WS_MAC)
         name = ports.at(i).portName;
-        if(name.indexOf("usbserial") > -1)
+        if(name.indexOf("usbserial",0,Qt::CaseInsensitive) > -1)
             cbPort->addItem(name);
 #else
         name = "/"+ports.at(i).physName;
-        cbPort->addItem(name);
+        if(name.indexOf("usb",0,Qt::CaseInsensitive) > -1)
+            cbPort->addItem(name);
 #endif
 #ifdef AUTOPORT
         index++;
@@ -1162,10 +1209,12 @@ void MainWindow::connectButton()
         btnConnected->setDisabled(true);
         portListener->open();
         btnConnected->setDisabled(false);
+        term->setPortName(portListener->port->portName());
         term->show();
     }
     else {
         portListener->close();
+        term->hide();
     }
 }
 
