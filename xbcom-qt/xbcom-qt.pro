@@ -44,7 +44,8 @@ SOURCES += \
     xbasic_vm.c \
     serial_helper.c \
     hub_loader.c \
-    flash_loader.c
+    flash_loader.c \
+    ../src/compiler/db_pasm.c
 
 HEADERS += \
     ../src/common/osint.h \

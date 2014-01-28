@@ -57,9 +57,11 @@
 #include "xbasicboard.h"
 #include "console.h"
 #include "hardware.h"
+#include "PortConnectionMonitor.h"
 
 #if defined(Q_WS_WIN32)
-#include "WindowsEvent.h"
+#include <qt_windows.h>
+#include <dbt.h>
 #endif
 
 #define untitledstr "Untitled"
@@ -113,6 +115,7 @@ public slots:
     void fileChanged();
     void keyHandler(QKeyEvent* event);
     void enumeratePorts();
+    void enumeratePortsEvent();
     void initBoardTypes();
 
 private:
@@ -191,12 +194,12 @@ private:
     QProgressBar *progress;
     QString compileResult;
 
-#if defined(Q_WS_WIN32)
-    WindowsEvent *winev;
-#endif
+    PortConnectionMonitor *portConnectionMonitor;
 
+#if defined(Q_WS_WIN32)
 protected:
     bool winEvent(MSG *msg,long * result);
+#endif
 
 };
 //! [0]

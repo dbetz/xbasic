@@ -55,10 +55,9 @@ SOURCES += main.cpp\
     xbasicboard.cpp \
     console.cpp \
     hardware.cpp \
-    progressdialog.cpp \
-    progressform.cpp \
     qextserialenumerator.cpp \
-    PropellerID.cpp
+    PropellerID.cpp \
+    PortConnectionMonitor.cpp
 
 HEADERS  += mainwindow.h \
     highlighter.h \
@@ -73,9 +72,8 @@ HEADERS  += mainwindow.h \
     xbasicboard.h \
     console.h \
     hardware.h \
-    progressdialog.h \
-    progressform.h \
-    PropellerID.h
+    PropellerID.h \
+    PortConnectionMonitor.h
 
 OTHER_FILES +=
 
