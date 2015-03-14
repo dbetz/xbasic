@@ -1,0 +1,1 @@
+The xbasic compiler generates bytecode images that can be run either on a PC host (Windows, Mac OSX or Linux or using an assembly language version of the VM on the Parallax Propeller microcontroller.
