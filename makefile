@@ -13,28 +13,25 @@ DIRS = $(OBJDIR) $(BINDIR)
 CC=gcc
 ECHO=echo
 MKDIR=mkdir -p
+SPINCMP=openspin
 
 CFLAGS=-Wall -I$(SRCDIR)/common -I$(SRCDIR)/runtime -I$(SRCDIR)/loader
 LDFLAGS=$(CFLAGS)
-SPINFLAGS=-Ogxr
 
 ifeq ($(OS),linux)
 CFLAGS += -DLINUX
-BSTC=bstc.linux
 EXT=
 OSINT=osint_linux
 endif
 
 ifeq ($(OS),cygwin)
 CFLAGS += -DCYGWIN
-BSTC=bstc
 EXT=.exe
 OSINT=osint_cygwin
 endif
 
 ifeq ($(OS),macosx)
 CFLAGS += -DMACOSX
-BSTC=bstc.osx
 EXT=
 OSINT=osint_linux
 endif
@@ -184,11 +181,11 @@ cache-drivers:	$(CACHE_DRIVERS)
 ##################
 
 $(OBJDIR)/serial_helper.binary:	$(SPINDIR)/serial_helper.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPINCMP) -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%_loader.binary:	$(SPINDIR)/%_loader.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -b -o $(basename $@) $<
+	@$(SPINCMP) -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
@@ -200,11 +197,11 @@ $(OBJDIR)/%.c:	$(OBJDIR)/%.binary
 ###############
 
 $(DRVDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPINCMP) -c -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.dat:	$(SPINDIR)/%.spin $(SPIN_SRCS)
-	@$(BSTC) $(SPINFLAGS) -c -o $(basename $@) $<
+	@$(SPINCMP) -c -o $@ $<
 	@$(ECHO) $@
 
 $(OBJDIR)/%.c:	$(OBJDIR)/%.dat

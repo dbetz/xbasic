@@ -1,12 +1,5 @@
 CON
 
-  ' make some vm_interface constants available
-  _MBOX_SIZE = vm#_MBOX_SIZE
-  _STATE_SIZE = vm#_STATE_SIZE
-  FLASH_BASE = vm#FLASH_BASE
-  RAM_BASE = vm#RAM_BASE
-  HUB_BASE = vm#HUB_BASE
-
   ' character codes
   CR = $0d
   LF = $0a
